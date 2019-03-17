@@ -1,0 +1,4 @@
+{
+    "name": "builder",
+    "scripts": ["main.js", "build.js"]
+}
