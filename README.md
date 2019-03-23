@@ -7,8 +7,8 @@ A work in progress GMEdit plugin that allows for building GMS 2 projects from in
 The game can currently compile projects using the default configuration... at least on my system
 
 # todo/goals
-* display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)
-* add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))
+* ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
+* ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
 * support GMS 1 projects? (unlikely)
 
 # usage
