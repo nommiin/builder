@@ -71,13 +71,45 @@ $gmedit["gml.Project"].current
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;
-            preferences.buildMain = (arguments) => {
+            preferences.buildMain = function(arguments) {
                 let _return = buildMain.apply(this, arguments);
                 preferences.addButton(_return, "Builder settings", function() {
                     preferences.setMenu(Builder.Settings);
                 });
                 return _return;
-            }            
+            }
+
+            // Hook into finishedIndexing method of Project.hx
+            let finishedIndexing = $gmedit["gml.Project"].prototype.finishedIndexing;
+            $gmedit["gml.Project"].prototype.finishedIndexing = function(arguments) {
+                let _return = finishedIndexing.apply(this, arguments);
+                this.configs = ["default"];
+                JSON.parse(Electron_FS.readFileSync($gmedit["gml.Project"].current.path)).configs.forEach(config => {
+                    config.split(";").forEach(c => {
+                        if (this.configs.includes(c) == false) this.configs.push(c);
+                    });
+                });
+
+                this.config = window.localStorage.getItem(`config:${$gmedit["gml.Project"].current.path}`);
+                if (this.config == null || this.configs.includes(this.config) == false) {
+                    this.config = this.configs[0];
+                    window.localStorage.setItem(`config:${$gmedit["gml.Project"].current.path}`, this.config);
+                }
+
+                let configs = $gmedit["ui.treeview.TreeView"].makeAssetDir("Configurations", "");
+                this.configs.forEach(c => {
+                    let config = $gmedit["ui.treeview.TreeView"].makeItem(c);
+                    config.addEventListener("dblclick", function(e) {
+                        $gmedit["gml.Project"].current.config = this.innerText;
+                        window.localStorage.setItem(`config:${$gmedit["gml.Project"].current.path}`, this.innerText);
+                        document.getElementById("project-name").innerText = `${$gmedit["gml.Project"].current.displayName} (${this.innerText})`;
+                    });
+                    configs.treeItems.appendChild(config);
+                });
+                $gmedit["ui.treeview.TreeView"].element.appendChild(configs);
+                document.getElementById("project-name").innerText = `${this.displayName} (${this.config})`
+                return _return;
+            }
         }
     });
 
@@ -85,9 +117,7 @@ $gmedit["gml.Project"].current
         for(var i = 0; i < 1/*2*/; i++) {
             $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = true;
         }
-
-        //console.log(project.path);
-        $gmedit["ui.treeview.TreeView"].element.appendChild($gmedit["ui.treeview.TreeView"].makeAssetDir("Configurations", ""));
+        
     });
 
     GMEdit.on("projectClose", function() {
