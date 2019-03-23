@@ -1,6 +1,8 @@
 # builder
 A work in progress GMEdit plugin that allows for building GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
 
+![screenshot](https://i.imgur.com/9ne0FRv.png)
+
 # progress
 The game can currently compile projects using the default configuration... at least on my system
 
