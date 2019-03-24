@@ -119,9 +119,9 @@ $gmedit["gml.Project"].current
         }
     });
 
-    GMEdit.on("projectOpen", function(project) {
+    GMEdit.on("projectOpen", function() {
         for(var i = 0; i < 1/*2*/; i++) {
-            $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = true;
+            $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = ($gmedit["gml.Project"].current.version == 2 ? true : false);
         }
         
     });
