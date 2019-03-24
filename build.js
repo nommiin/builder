@@ -40,6 +40,7 @@ Builder.Run = function() {
     }
     gmout.write(`Creating virtual drive: ${Builder.Drive}\n`);
     cmd.execSync(`subst ${Builder.Drive}: ${temppath}`);
+    window.localStorage.setItem("builder:drives", (window.localStorage.getItem("builder:drives") || "") + Builder.Drive);
     temppath = Builder.Drive + "://";
     let outpath = temppath + projectname + "_" + Builder.Random();
 
@@ -67,6 +68,12 @@ Builder.Run = function() {
         gmrn.addListener("close", function() {
             gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
             cmd.exec("subst /d " + Builder.Drive + ":");
+
+            let vds = window.localStorage.getItem("builder:drives") || "";
+            window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
+            //dd.slice(0, dd.indexOf("J")) + dd.slice(dd.indexOf("J") + 1)
+
+            window.localStorage.setItem("builder:drives", window.localStorage.getItem("builder:drives").slice())
             Builder.Running = false;
         });
 

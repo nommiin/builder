@@ -25,7 +25,7 @@ $gmedit["gml.Project"].current
             menu.items.forEach((item, index) => {
                 if (item.label.toLowerCase() == "close project") {
                     //menu.insert(++index, new Electron_MenuItem({label: "Stop Project", accelerator: "F6", enabled: false, click: Builder.Debug}));
-                    menu.insert(++index, new Electron_MenuItem({label: "Run Project", accelerator: "F5", enabled: false, click: Builder.Run}));
+                    menu.insert(++index, new Electron_MenuItem({label: "Run Project", accelerator: "CTRL+F5", enabled: false, click: Builder.Run}));
                     menu.insert(index, new Electron_MenuItem({type: "separator"}));
                     Builder.Index = index + 1;
                     return;
@@ -69,6 +69,18 @@ $gmedit["gml.Project"].current
                 Builder.Preferences.runtimeSelection = v;
                 Builder.Save();
             });
+            preferences.addButton(Builder.Settings, "Clean Virtual Drives", function() {
+                let cmd = require("child_process"), vds = window.localStorage.getItem("builder:drives") || "";
+                if (vds.length > 0) {
+                    for(var j = 0; j < vds.length; j++) {
+                        try {
+                            cmd.execSync("subst /d " + vds[j] + ":");
+                        } catch(e) {}
+                    }
+                }
+                window.localStorage.setItem("builder:drives", "");
+                Electron_Dialog.showMessageBox({message: "Finished cleaning virtual drives"});
+            });
             preferences.addButton(Builder.Settings, "Back", function() {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
@@ -79,7 +91,7 @@ $gmedit["gml.Project"].current
             let buildMain = preferences.buildMain;
             preferences.buildMain = function(arguments) {
                 let _return = buildMain.apply(this, arguments);
-                preferences.addButton(_return, "Builder settings", function() {
+                preferences.addButton(_return, "builder Settings", function() {
                     preferences.setMenu(Builder.Settings);
                 });
                 return _return;
