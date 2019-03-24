@@ -1,7 +1,7 @@
 # builder
 (**NOTE:** At the moment, builder relies of features not avaliable in the release build of GMEdit as of 03/29/2019. It is suggested that you download and build GMEdit yourself to ensure plugin compatiblity, reccomended commit is [f727ebb](https://github.com/GameMakerDiscord/GMEdit/commit/f727ebbf592face27f48af223e6e4885bd189c4e))
 
-A work in progress GMEdit plugin that allows for building GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
+A work in progress GMEdit plugin that allows for testing Windows VM GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
 
 ![screenshot](https://i.imgur.com/9ne0FRv.png)
 
