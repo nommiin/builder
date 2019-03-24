@@ -57,7 +57,7 @@ $gmedit["gml.Project"].current
                     Builder.Settings.children[3].children[1].innerHTML = "";
                     Builder.Preferences.runtimeList.forEach((e, i) => {
                         let o = document.createElement("option");
-                        o.value = i;
+                        o.value = e;
                         o.innerHTML = e;
                         Builder.Settings.children[3].children[1].appendChild(o);
                     });
