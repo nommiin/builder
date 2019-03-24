@@ -14,6 +14,12 @@ $gmedit["gml.Project"].current
 
     GMEdit.register("builder", {
         init: ()=> {
+            // check for windows
+            if (require("os").type().includes("Windows") == false) {
+                Electron_Dialog.showErrorBox("Error", "builder is not supported on non-Windows platforms.");
+                return;
+            }
+
             // Register main menu options
             let menu = $gmedit["ui.MainMenu"].menu;
             menu.items.forEach((item, index) => {

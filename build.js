@@ -18,17 +18,18 @@ Builder.Run = function() {
     }
 
     // create output tab
-    let t = new Date(), gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours()}:${t.getMinutes()}:${t.getSeconds()})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}\nUsing runtime: ${runtimepath}\n`);
+    let t = new Date(), p = performance.now();
+    gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours()}:${t.getMinutes()}:${t.getSeconds()})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}\nUsing runtime: ${runtimepath}\n`);
     gmout.write = (e) => {
         gmout.editor.session.setValue(gmout.editor.session.getValue() + e);
         if (document.querySelector(".chrome-tab-current").gmlFile == gmout) aceEditor.gotoLine(aceEditor.session.getLength());
     }
-    gmout.editor.session.setOption("readOnly", true);
     $gmedit["gml.file.GmlFile"].openTab(gmout);
 
     // make sure assetcompiler exists
     if (Electron_FS.existsSync(`${runtimepath}\\bin\\GMAssetCompiler.exe`) == false) {
-        gmout.write(`\n!!!\n   Could not compile project as "GMAssetCompiler.exe" could not be found in ${runtimepath}\n!!!\n\n`);
+        Electron_Dialog.showErrorBox("Failed to compile project.", "Could not find \"GMAssetCompiler.exe\" in " + runtimepath + "\\bin\\");
+        gmout.write(`\n!!!\n   Could not compile project as "GMAssetCompiler.exe" could not be found in ${runtimepath}\\bin\\\n!!!\n\n`);
         return;
     }
 
@@ -52,8 +53,11 @@ Builder.Run = function() {
     
     gmac.addListener("close", function() {
         // finished compiling, now run!
+        gmout.write(`Compile completed in ${(performance.now() - p).toFixed(1)}ms\n`);
+        // check if runner exists
         if (Electron_FS.existsSync(`${runtimepath}\\windows\\Runner.exe`) == false) {
-            gmout.write(`\n!!!\n   Could not run project as "Runner.exe" could not be found in ${runtimepath}\n!!!\n\n`);
+            Electron_Dialog.showErrorBox("Failed to run game.", "Could not find \"Runner.exe\" in " + runtimepath + "\\windows\\");
+            gmout.write(`\n!!!\n   Could not run project as "Runner.exe" could not be found in ${runtimepath}\\windows\\\n!!!\n\n`);
             gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
             cmd.exec("subst /d " + Builder.Drive + ":");
             return;
