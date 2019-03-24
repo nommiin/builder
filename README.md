@@ -1,5 +1,7 @@
 # builder
-A work in progress GMEdit plugin that allows for building GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
+(**NOTE:** At the moment, builder relies of features not avaliable in the release build of GMEdit as of 03/29/2019. It is suggested that you download and build GMEdit yourself to ensure plugin compatiblity, reccomended commit is [f727ebb](https://github.com/GameMakerDiscord/GMEdit/commit/f727ebbf592face27f48af223e6e4885bd189c4e))
+
+A work in progress GMEdit plugin that allows for testing Windows VM GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
 
 ![screenshot](https://i.imgur.com/9ne0FRv.png)
 
@@ -7,8 +9,8 @@ A work in progress GMEdit plugin that allows for building GMS 2 projects from in
 The game can currently compile projects using the default configuration... at least on my system
 
 # todo/goals
-* display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)
-* add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))
+* ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
+* ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
 * support GMS 1 projects? (unlikely)
 
 # usage
