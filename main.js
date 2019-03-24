@@ -18,8 +18,8 @@ $gmedit["gml.Project"].current
             let menu = $gmedit["ui.MainMenu"].menu;
             menu.items.forEach((item, index) => {
                 if (item.label.toLowerCase() == "close project") {
-                    menu.insert(++index, new Electron_MenuItem({label: "Debug Project", accelerator: "F6", enabled: false, click: Builder.Debug}));
-                    menu.insert(index, new Electron_MenuItem({label: "Run Project", accelerator: "F5", enabled: false, click: Builder.Run}));
+                    //menu.insert(++index, new Electron_MenuItem({label: "Stop Project", accelerator: "F6", enabled: false, click: Builder.Debug}));
+                    menu.insert(++index, new Electron_MenuItem({label: "Run Project", accelerator: "F5", enabled: false, click: Builder.Run}));
                     menu.insert(index, new Electron_MenuItem({type: "separator"}));
                     Builder.Index = index + 1;
                     return;
