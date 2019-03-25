@@ -2,22 +2,24 @@
 /*
 $gmedit["gml.Project"].current
 */
+Builder = {Platform: require("os").type()};
+console.log(Builder.Platform);
+if (Builder.Platform.includes("Windows") == true) Builder.Platform = "win";
+if (Builder.Platform.includes("Darwin") == true) {
+    Builder.Platform = "mac";
+    process.env.ProgramData = "/Users/Shared";
+}
+
 (function() {
     Builder = {
         Index: -1,
-        Platform: require("os").type(),
         Settings: document.createElement("div"),
-        Preferences: {runtimeLocation: process.env.ProgramData + "\\GameMakerStudio2\\Cache\\runtimes\\", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "\\GameMakerStudio2\\Cache\\runtimes\\"), runtimeSelection: ""},
+        Platform: Builder.Platform,
+        Preferences: {runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
         Save: function() {
-            Electron_FS.writeFileSync(Electron_App.getPath("userData") + "\\GMEdit\\config\\builder-preferences.json", JSON.stringify(this.Preferences));
+            Electron_FS.writeFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json", JSON.stringify(this.Preferences));
         }
     };
-
-    if (Builder.Platform.includes("Windows") == true) Builder.Platform = "win";
-    if (Builder.Platform.includes("Darwin") == true) {
-        Builder.Platform = "mac";
-        process.env.ProgramData = "\\Users\\Shared";
-    }
 
     GMEdit.register("builder", {
         init: ()=> {
@@ -41,8 +43,8 @@ $gmedit["gml.Project"].current
 
             // Load builder preferences
             Builder.Preferences.runtimeSelection = Builder.Preferences.runtimeList[0];
-            if (Electron_FS.existsSync(Electron_App.getPath("userData") + "\\GMEdit\\config\\builder-preferences.json") == true) {
-                Builder.Preferences = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("userData") + "\\GMEdit\\config\\builder-preferences.json"));
+            if (Electron_FS.existsSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json") == true) {
+                Builder.Preferences = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json"));
             } else {
                 Builder.Save();
             }
@@ -54,7 +56,7 @@ $gmedit["gml.Project"].current
                 Builder.Save();
             });
             preferences.addButton(Builder.Settings, "Reset Location", function() {
-                Builder.Preferences.runtimeLocation = process.env.ProgramData + "\\GameMakerStudio2\\Cache\\runtimes\\";
+                Builder.Preferences.runtimeLocation = process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/";
                 Builder.Settings.children[1].value = Builder.Preferences.runtimeLocation;
                 Builder.Save();
             });
@@ -76,18 +78,20 @@ $gmedit["gml.Project"].current
                 Builder.Preferences.runtimeSelection = v;
                 Builder.Save();
             });
-            preferences.addButton(Builder.Settings, "Clean Virtual Drives", function() {
-                let cmd = require("child_process"), vds = window.localStorage.getItem("builder:drives") || "";
-                if (vds.length > 0) {
-                    for(var j = 0; j < vds.length; j++) {
-                        try {
-                            cmd.execSync("subst /d " + vds[j] + ":");
-                        } catch(e) {}
+            if (Builder.Platform == "win") {
+                preferences.addButton(Builder.Settings, "Clean Virtual Drives", function() {
+                    let cmd = require("child_process"), vds = window.localStorage.getItem("builder:drives") || "";
+                    if (vds.length > 0) {
+                        for(var j = 0; j < vds.length; j++) {
+                            try {
+                                cmd.execSync("subst /d " + vds[j] + ":");
+                            } catch(e) {}
+                        }
                     }
-                }
-                window.localStorage.setItem("builder:drives", "");
-                Electron_Dialog.showMessageBox({message: "Finished cleaning virtual drives"});
-            });
+                    window.localStorage.setItem("builder:drives", "");
+                    Electron_Dialog.showMessageBox({message: "Finished cleaning virtual drives"});
+                });
+            }
             preferences.addButton(Builder.Settings, "Back", function() {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
