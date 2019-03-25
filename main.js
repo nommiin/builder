@@ -100,7 +100,7 @@ if (Builder.Platform.includes("Darwin") == true) {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.5 (" + Builder.Platform + ") - nommiin")
+            preferences.addText(Builder.Settings, "builder v0.6 (" + Builder.Platform + ") - nommiin")
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;
