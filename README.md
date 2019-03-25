@@ -15,6 +15,7 @@ The game can currently compile projects using the default configuration... at le
 * add support for building for other platforms
 * add a "clean project" button
 * add a "stop project" button to stop running game or compiler
+* add a "fork game" button to run multiple instances of game
 * support GMS 1 projects? (unlikely)
 
 # usage
