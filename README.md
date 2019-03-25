@@ -17,6 +17,7 @@ you can compile and run any GMS 2 project with your chosen configuration, just l
 * a "stop project" button to stop running game or compiler
 * a "fork game" button to run multiple instances of game
 * more compiler customization (worker threads, verbose output, etc)
+* in-editor progress bar, based on what GMAssetCompiler is doing
 * support GMS 1 projects? (unlikely)
 
 # usage
