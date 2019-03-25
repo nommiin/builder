@@ -1,18 +1,11 @@
 # builder
-(~~**NOTE:** At the moment, builder relies of features not avaliable in the release build of GMEdit as of 03/23/2019. It is suggested that you download and build GMEdit yourself to ensure plugin compatiblity, reccomended commit is f727ebb~~)
+A GMEdit plugin that allows for VM compilation and testing from directly inside of GMEdit itself
+![screenshot](https://i.imgur.com/eift2aO.png)
 
-A work in progress GMEdit plugin that allows for testing Windows VM GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
-
-![screenshot](https://i.imgur.com/9ne0FRv.png)
-
-# progress
-you can compile and run any GMS 2 project with your chosen configuration, just like you can in GMS 2!
+# about
+builder was made to make GMEdit usable without the need of having GameMaker Studio 2 open in the background to compile projects. builder works by using your pre-existing settings made by GMS 2 to pass arguments into GMAssetCompiler and compile your project. 
 
 # todo/goals
-* ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
-* ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
-* support for building YYC projects
-* support for building for other platforms
 * a "clean project" button
 * a "stop project" button to stop running game or compiler
 * a "fork game" button to run multiple instances of game
@@ -28,4 +21,6 @@ you can compile and run any GMS 2 project with your chosen configuration, just l
 5. optional: adjust what runtime to use in the "Preferences" menu
 
 # thanks
-* YellowAfterlife for accepting my pull requests for adding in plugin events that made this easier to develop
+* [YellowAfterlife](https://twitter.com/YellowAfterlife) for accepting PRs that help the core functionality of this plugn and answering my endless questions
+* [Sidorakh](https://github.com/sidorakh/) for testing and supporting the plugin
+* [347_Jake](https://twitter.com/347_Jake) for encouraging me to add macOS support to the plugin
