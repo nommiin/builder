@@ -13,6 +13,8 @@ The game can currently compile projects using the default configuration... at le
 * ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
 * add support for building YYC projects
 * add support for building for other platforms
+* add a "clean project" button
+* add a "stop project" button to stop running game or compiler
 * support GMS 1 projects? (unlikely)
 
 # usage
