@@ -13,8 +13,6 @@ builder was made to make [GMEdit](https://yellowafterlife.itch.io/gmedit) usable
 
 # todo/goals
 * a "clean project" button
-* a "stop project" button to stop running game or compiler
-* a "fork game" button to run multiple instances of game
 * more compiler customization (worker threads, verbose output, etc)
 * in-editor progress bar, based on what GMAssetCompiler is doing
 * support GMS 1 projects? (unlikely)
