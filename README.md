@@ -1,5 +1,5 @@
 # builder
-(**NOTE:** At the moment, builder relies of features not avaliable in the release build of GMEdit as of 03/23/2019. It is suggested that you download and build GMEdit yourself to ensure plugin compatiblity, reccomended commit is [f727ebb](https://github.com/GameMakerDiscord/GMEdit/commit/f727ebbf592face27f48af223e6e4885bd189c4e))
+(~~**NOTE:** At the moment, builder relies of features not avaliable in the release build of GMEdit as of 03/23/2019. It is suggested that you download and build GMEdit yourself to ensure plugin compatiblity, reccomended commit is f727ebb~~)
 
 A work in progress GMEdit plugin that allows for testing Windows VM GMS 2 projects from inside GMEdit by invoking GMAssetCompiler
 
