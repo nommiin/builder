@@ -11,11 +11,12 @@ you can compile and run any GMS 2 project with your chosen configuration, just l
 # todo/goals
 * ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
 * ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
-* add support for building YYC projects
-* add support for building for other platforms
-* add a "clean project" button
-* add a "stop project" button to stop running game or compiler
-* add a "fork game" button to run multiple instances of game
+* support for building YYC projects
+* support for building for other platforms
+* a "clean project" button
+* a "stop project" button to stop running game or compiler
+* a "fork game" button to run multiple instances of game
+* more compiler customization (worker threads, verbose output, etc)
 * support GMS 1 projects? (unlikely)
 
 # usage
