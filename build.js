@@ -2,8 +2,14 @@ Builder.Random = function() {
     return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase();
 }
 
-Builder.Running = false;
-Builder.Drive = "";
+Builder = Object.assign(Builder, {
+    Drive: "",
+    Running: 0,
+    Compiler: undefined,
+    RunArgs: [],
+    Runner: undefined
+});
+
 Builder.Parse = function(bString, bType) {
     if (bType == 0) { // GMAssetCompiler
         if (bString.includes("Error : ") == true) {
@@ -101,20 +107,28 @@ Builder.Run = function() {
     let outpath = temppath + projectname + "_" + Builder.Random();
     gmout.write(`Using output directory: ${outpath}\n`);
 
-    Builder.Running = true;
+    // enable stop button
+    $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1].enabled = true;
+    Builder.Running = 1;
+
     // run compiler!
-    //console.log("run comp:", `${runtimepath}/bin/GMAssetCompiler.exe`)
-    let gmac = cmd.exec(`${(Builder.Platform == "mac" ? "/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono " : "")}${runtimepath}/bin/GMAssetCompiler.exe /c /zpex /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${temppath}" /zpuf="${userpath}" /m=windows /tgt=64 /nodnd /cfg="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm /baseproject="${runtimepath}/BaseProject/BaseProject.yyp" "${$gmedit["gml.Project"].current.path}" /v /bt=run`);
+    Builder.Compiler = cmd.exec(`${(Builder.Platform == "mac" ? "/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono " : "")}${runtimepath}/bin/GMAssetCompiler.exe /c /zpex /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${temppath}" /zpuf="${userpath}" /m=windows /tgt=64 /nodnd /cfg="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm /baseproject="${runtimepath}/BaseProject/BaseProject.yyp" "${$gmedit["gml.Project"].current.path}" /v /bt=run`);
+    
     // add compiler output
-    gmac.stdout.on("data", (e) => {
+    Builder.Compiler.stdout.on("data", (e) => {
+        if (Builder.Compiler == undefined) return;
         switch (Builder.Parse(e, 0)) {
-            case 0: gmout.write(e); break;
-            case 1: gmac.kill(); break;
+            default: gmout.write(e); break;
+            //case 1: Builder.Compiler.kill(); break;
         }
     });
     
-    gmac.addListener("close", function() {
+    Builder.Compiler.addListener("close", function() {
+        if (Builder.Compiler == undefined) return;
         // finished compiling, now run!
+        Builder.Running = 2;
+        Builder.Compiler = undefined;
+        $gmedit["ui.MainMenu"].menu.items[Builder.Index + 2].enabled = true; // Fork button
         gmout.write(`Compile completed in ${(performance.now() - p).toFixed(1)}ms\n`);
         // check if runner exists
         if (Electron_FS.existsSync(`${runtimepath}/windows/Runner.exe`) == false) {
@@ -122,11 +136,13 @@ Builder.Run = function() {
             gmout.write(`\n!!!\n   Could not run project as "Runner.exe" could not be found in ${runtimepath}/windows/\n!!!\n\n`);
             gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
             cmd.exec("subst /d " + Builder.Drive + ":");
+            Builder.Runner = undefined; Builder.Compiler = undefined;
             return;
         }
 
-        let gmrn = (Builder.Platform == "win" ? cmd.exec(`${runtimepath}/windows/Runner.exe -game "${outpath}/${projectname}.win"`) : cmd.exec(`"${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner" --args -game "${outpath}/${projectname}.win"`));
-        gmrn.addListener("close", function() {
+        Builder.RunArgs = [(Builder.Platform == "win" ? `${runtimepath}/windows/Runner.exe` : `${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`), ["-game", `${outpath}/${projectname}.win`]];
+        Builder.Runner = cmd.spawn(Builder.RunArgs[0], Builder.RunArgs[1]);
+        Builder.Runner.addListener("close", function() {
             if (Builder.Platform == "win") {
                 gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
                 cmd.exec("subst /d " + Builder.Drive + ":");
@@ -134,14 +150,42 @@ Builder.Run = function() {
                 let vds = window.localStorage.getItem("builder:drives") || "";
                 window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
             }
-            Builder.Running = false;
+            for(var i = 0; i < 2; i++) {
+                $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1 + i].enabled = false;
+            }
+            Builder.Running = 0;
+            Builder.RunArgs = [];
+            Builder.Runner = undefined; Builder.Compiler = undefined;
         });
 
         // add runner output
-        gmrn.stdout.on("data", (e) => {
+        Builder.Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
                 default: gmout.write(e); break;
             }
         });
     });
+}
+
+Builder.Stop = function() {
+    let t = new Date(), cmd = require("child_process");
+    gmout.write(`${(Builder.Running == 1 ? "Compile" : (Builder.Running == 2 ? "Runner" : ""))} Stopped: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\n`);
+    if (Builder.Compiler != undefined) (Builder.Platform == "win" ? cmd.execSync("taskkill /F /IM GMAssetCompiler.exe") : ""); Builder.Compiler = undefined;
+    if (Builder.Runner != undefined) Builder.Runner.kill(); Builder.Runner = undefined;
+    if (Builder.Platform == "win") {
+        cmd.exec("subst /d " + Builder.Drive + ":");
+        let vds = window.localStorage.getItem("builder:drives") || "";
+        window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
+    }
+    Builder.Running = 0;
+}
+
+Builder.Fork = function() {
+    if (Builder.RunArgs.length > 0) {
+        require("child_process").spawn(Builder.RunArgs[0], Builder.RunArgs[1].concat([Builder.Preferences.forkArguments])).stdout.on("data", (e) => {
+            switch (Builder.Parse(e, 1)) {
+                default: gmout.write((e.toString()).replace(new RegExp("\n", 'g'), "[FORK] - ")); break;
+            }
+        });
+    }
 }

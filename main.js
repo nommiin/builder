@@ -10,15 +10,14 @@ if (Builder.Platform.includes("Darwin") == true) {
 }
 
 (function() {
-    Builder = {
+    Builder = Object.assign(Builder, {
         Index: -1,
         Settings: document.createElement("div"),
-        Platform: Builder.Platform,
-        Preferences: {runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
+        Preferences: {forkArguments: "-alt", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
         Save: function() {
             Electron_FS.writeFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json", JSON.stringify(this.Preferences));
         }
-    };
+    });
 
     GMEdit.register("builder", {
         init: ()=> {
@@ -33,7 +32,9 @@ if (Builder.Platform.includes("Darwin") == true) {
             menu.items.forEach((item, index) => {
                 if (item.label.toLowerCase() == "close project") {
                     //menu.insert(++index, new Electron_MenuItem({label: "Stop Project", accelerator: "F6", enabled: false, click: Builder.Debug}));
-                    menu.insert(++index, new Electron_MenuItem({label: "Run Project", accelerator: "CTRL+F5", enabled: false, click: Builder.Run}));
+                    menu.insert(++index, new Electron_MenuItem({label: "Fork", accelerator: "F7", enabled: false, click: Builder.Fork}));
+                    menu.insert(index, new Electron_MenuItem({label: "Stop", accelerator: "F6", enabled: false, click: Builder.Stop}));
+                    menu.insert(index, new Electron_MenuItem({label: "Run", accelerator: "F5", enabled: false, click: Builder.Run}));
                     menu.insert(index, new Electron_MenuItem({type: "separator"}));
                     Builder.Index = index + 1;
                     return;
@@ -43,7 +44,7 @@ if (Builder.Platform.includes("Darwin") == true) {
             // Load builder preferences
             Builder.Preferences.runtimeSelection = Builder.Preferences.runtimeList[0];
             if (Electron_FS.existsSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json") == true) {
-                Builder.Preferences = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json"));
+                Builder.Preferences = Object.assign(Builder.Preferences, JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json")));
             } else {
                 Builder.Save();
             }
@@ -75,6 +76,10 @@ if (Builder.Platform.includes("Darwin") == true) {
             });
             preferences.addDropdown(Builder.Settings, "Current Runtime", Builder.Preferences.runtimeSelection, Builder.Preferences.runtimeList, function(v) {
                 Builder.Preferences.runtimeSelection = v;
+                Builder.Save();
+            });
+            preferences.addInput(Builder.Settings, "Fork Arguments", Builder.Preferences.forkArguments, function(v) {
+                Builder.Preferences.forkArguments = v;
                 Builder.Save();
             });
             if (Builder.Platform == "win") {
