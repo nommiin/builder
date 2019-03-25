@@ -35,16 +35,18 @@ Builder.Parse = function(bString, bType) {
                     }
 
                     if ($gmedit["ui.OpenDeclaration"].openLocal(bAsset, 0) == true) {
-                        let bOffset = 0;
-                        if (eName != "") {
-                            for(let i = 0; i < aceEditor.session.getLength(); i++) {
-                                if (aceEditor.session.getLine(i).includes("#event " + eName) == true) {
-                                    bOffset = ++i;
-                                    break;
+                        setTimeout(() => {
+                            let bOffset = 0;
+                            if (eName != "") {
+                                for(let i = 0; i < aceEditor.session.getLength(); i++) {
+                                    if (aceEditor.session.getLine(i).includes("#event " + eName) == true) {
+                                        bOffset = ++i;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        aceEditor.gotoLine(bOffset + bLine);
+                            aceEditor.gotoLine(bOffset + bLine);
+                        }, 500);
                     }
 
                 }
@@ -123,7 +125,7 @@ Builder.Run = function() {
             return;
         }
 
-        let gmrn = gmrn = (Builder.Platform == "win" ? cmd.exec(`${runtimepath}/windows/Runner.exe -game "${outpath}/${projectname}.win"`) : cmd.exec(`"${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner" --args -game "${outpath}/${projectname}.win"`));
+        let gmrn = (Builder.Platform == "win" ? cmd.exec(`${runtimepath}/windows/Runner.exe -game "${outpath}/${projectname}.win"`) : cmd.exec(`"${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner" --args -game "${outpath}/${projectname}.win"`));
         gmrn.addListener("close", function() {
             if (Builder.Platform == "win") {
                 gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);

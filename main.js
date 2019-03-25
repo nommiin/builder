@@ -3,7 +3,6 @@
 $gmedit["gml.Project"].current
 */
 Builder = {Platform: require("os").type()};
-console.log(Builder.Platform);
 if (Builder.Platform.includes("Windows") == true) Builder.Platform = "win";
 if (Builder.Platform.includes("Darwin") == true) {
     Builder.Platform = "mac";
@@ -96,7 +95,7 @@ if (Builder.Platform.includes("Darwin") == true) {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.4 (" + Builder.Platform + ") - nommiin")
+            preferences.addText(Builder.Settings, "builder v0.5 (" + Builder.Platform + ") - nommiin")
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;
