@@ -6,7 +6,7 @@ A work in progress GMEdit plugin that allows for testing Windows VM GMS 2 projec
 ![screenshot](https://i.imgur.com/9ne0FRv.png)
 
 # progress
-The game can currently compile projects using the default configuration... at least on my system
+you can compile and run any GMS 2 project with your chosen configuration, just like you can in GMS 2!
 
 # todo/goals
 * ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
