@@ -5,6 +5,7 @@ $gmedit["gml.Project"].current
 (function() {
     Builder = {
         Index: -1,
+        Platform: require("os").type(),
         Settings: document.createElement("div"),
         Preferences: {runtimeLocation: process.env.ProgramData + "\\GameMakerStudio2\\Cache\\runtimes\\", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "\\GameMakerStudio2\\Cache\\runtimes\\"), runtimeSelection: ""},
         Save: function() {
@@ -12,11 +13,17 @@ $gmedit["gml.Project"].current
         }
     };
 
+    if (Builder.Platform.includes("Windows") == true) Builder.Platform = "win";
+    if (Builder.Platform.includes("Darwin") == true) {
+        Builder.Platform = "mac";
+        process.env.ProgramData = "\\Users\\Shared";
+    }
+
     GMEdit.register("builder", {
         init: ()=> {
             // check for windows
-            if (require("os").type().includes("Windows") == false) {
-                Electron_Dialog.showErrorBox("Error", "builder is not supported on non-Windows platforms.");
+            if (Builder.Platform != "win" && Builder.Platform != "mac") {
+                Electron_Dialog.showErrorBox("Error", "builder is not supported on non-Windows/macOS platforms.");
                 return;
             }
 
@@ -85,7 +92,7 @@ $gmedit["gml.Project"].current
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.4 - nommiin")
+            preferences.addText(Builder.Settings, "builder v0.4 (" + Builder.Platform + ") - nommiin")
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;

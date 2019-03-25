@@ -56,7 +56,7 @@ Builder.Parse = function(bString, bType) {
 
 Builder.Run = function() {
     // collect local settings
-    let userpath = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "\\GameMakerStudio2\\um.json")); userpath = Electron_App.getPath("appData") + "\\GameMakerStudio2\\" + userpath.login.slice(0, userpath.login.indexOf("@")) + "_" + userpath.userID;
+    let userpath = JSON.parse(Electron_FS.readFileSync((Builder.Platform == "win" ? Electron_App.getPath("appData") : "\\Users\\" + process.env.LOGNAME + "\\.config") + "\\GameMakerStudio2\\um.json")); userpath = Electron_App.getPath("appData") + "\\GameMakerStudio2\\" + userpath.login.slice(0, userpath.login.indexOf("@")) + "_" + userpath.userID;
     let usersettings = JSON.parse(Electron_FS.readFileSync(userpath + "\\local_settings.json"));
     let projectname = buildname = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp"));
     let temppath = usersettings["machine.General Settings.Paths.IDE.TempFolder"] + "GMS2TEMP";
