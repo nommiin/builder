@@ -69,7 +69,7 @@ Builder.Run = function() {
 
     // create output tab
     let t = new Date(), p = performance.now();
-    gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours()}:${t.getMinutes()}:${t.getSeconds()})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}\nUsing runtime: ${runtimepath}\n`);
+    gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\nUsing runtime: ${runtimepath}\n`);
     gmout.write = (e) => {
         gmout.editor.session.setValue(gmout.editor.session.getValue() + e);
         if (document.querySelector(".chrome-tab-current").gmlFile == gmout) aceEditor.gotoLine(aceEditor.session.getLength());

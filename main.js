@@ -85,7 +85,7 @@ $gmedit["gml.Project"].current
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.3 - nommiin")
+            preferences.addText(Builder.Settings, "builder v0.4 - nommiin")
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;
