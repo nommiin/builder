@@ -3,7 +3,7 @@ A GMEdit plugin that allows for VM compilation and testing from directly inside 
 ![screenshot](https://i.imgur.com/eift2aO.png)
 
 # about
-builder was made to make GMEdit usable without the need of having GameMaker Studio 2 open in the background to compile projects. builder works by using your pre-existing settings made by GMS 2 to pass arguments into GMAssetCompiler and compile your project. 
+builder was made to make GMEdit usable without the need of having GameMaker Studio 2 open in the background to compile projects. builder works by using your pre-existing settings made by GMS 2 to pass arguments into GMAssetCompiler and compile your project. You can download a pre-packaged version of builder from [here!](https://github.com/nommiin/builder/releases)
 
 # todo/goals
 * a "clean project" button
