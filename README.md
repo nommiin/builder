@@ -11,6 +11,8 @@ The game can currently compile projects using the default configuration... at le
 # todo/goals
 * ~~display output of GMAssetCompiler and Runner inside of GMEdit (likely will use a new code editor tab for this)~~ (added with v0.2)
 * ~~add support for configurations that are passed to GMAssetCompiler ([wip](https://i.imgur.com/LYAq1Rq.png))~~ (added with v0.2)
+* add support for building YYC projects
+* add support for building for other platforms
 * support GMS 1 projects? (unlikely)
 
 # usage
