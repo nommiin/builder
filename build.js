@@ -69,10 +69,12 @@ Builder.Run = function() {
     // collect local settings
     let userpath = JSON.parse(Electron_FS.readFileSync((Builder.Platform == "win" ? Electron_App.getPath("appData") : ("/Users/" + process.env.LOGNAME + "/.config")) + "/GameMakerStudio2/um.json")); userpath = (Builder.Platform == "win" ? Electron_App.getPath("appData") : ("/Users/" + process.env.LOGNAME + "/.config")) + "/GameMakerStudio2/" + userpath.login.slice(0, userpath.login.indexOf("@")) + "_" + userpath.userID;
     let usersettings = JSON.parse(Electron_FS.readFileSync(userpath + "/local_settings.json"));
-    let projectname = buildname = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp"));
-    let tempdir = require("os").tmpdir(), temppath = (usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP");
+    let projectnameg = buildname = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp"));
+    let projectname = projectnameg.replace(new RegExp(" ", 'g'), "_");;
+    let tempdir = require("os").tmpdir(), temppath = (usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP/");
     let runtimepath = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
     let cmd = require("child_process");
+    let ext = (Builder.Platform == "win" ? "win" : "ios");
 
     // create temp path if needed
     if (Electron_FS.existsSync(temppath) == false) {
@@ -115,7 +117,7 @@ Builder.Run = function() {
     Builder.Running = 1;
 
     // run compiler!
-    Builder.Compiler = cmd.exec(`${(Builder.Platform == "mac" ? "/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono " : "")}${runtimepath}/bin/GMAssetCompiler.exe /c /zpex /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${temppath}" /zpuf="${userpath}" /m=windows /tgt=64 /nodnd /cfg="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm /baseproject="${runtimepath}/BaseProject/BaseProject.yyp" "${$gmedit["gml.Project"].current.path}" /v /bt=run`);
+    Builder.Compiler = cmd.exec(`${(Builder.Platform == "mac" ? "/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono " : "")}${runtimepath}/bin/GMAssetCompiler.exe /c /zpex /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${temppath}" /zpuf="${userpath}" /m=${Builder.Platform == "win" ? "windows" : "mac"} /tgt=64 /nodnd /cfg="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm /baseproject="${runtimepath}/BaseProject/BaseProject.yyp" "${$gmedit["gml.Project"].current.path}" /v /bt=run`);
     
     // add compiler output
     Builder.Compiler.stdout.on("data", (e) => {
@@ -128,7 +130,7 @@ Builder.Run = function() {
     });
     
     Builder.Compiler.addListener("close", function() {
-        
+        // check for errors
         if (Builder.Errors.length > 0) {
             let gmer = new $gmedit["gml.file.GmlFile"](`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`);
             gmer.write = (e) => {
@@ -188,6 +190,10 @@ Builder.Run = function() {
             return;
         }
         if (Builder.Compiler == undefined) return;
+        
+        // rename output
+        Electron_FS.renameSync(`${outpath}/${projectnameg}.${ext}`, `${outpath}/game.${ext}`)
+
         // finished compiling, now run!
         Builder.Running = 2;
         Builder.Compiler = undefined;
@@ -203,7 +209,7 @@ Builder.Run = function() {
             return;
         }
 
-        Builder.RunArgs = [(Builder.Platform == "win" ? `${runtimepath}/windows/Runner.exe` : `${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`), ["-game", `${outpath}/${projectname}.win`]];
+        Builder.RunArgs = [(Builder.Platform == "win" ? `${runtimepath}/windows/Runner.exe` : `${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`), ["-game", `${outpath}/game.${ext}`]];
         Builder.Runner = cmd.spawn(Builder.RunArgs[0], Builder.RunArgs[1]);
         Builder.Runner.addListener("close", function() {
             if (Builder.Platform == "win") {
