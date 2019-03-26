@@ -177,6 +177,7 @@ Builder.Stop = function() {
         let vds = window.localStorage.getItem("builder:drives") || "";
         window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
     }
+    for(var i = 0; i < 2; i++) $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1 + i].enabled = false;
     Builder.Running = 0;
 }
 
