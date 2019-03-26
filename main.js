@@ -109,7 +109,7 @@ if (Builder.Platform.includes("Darwin") == true) {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.7 (" + Builder.Platform + ") - nommiin");
+            preferences.addText(Builder.Settings, "builder v0.8 (" + Builder.Platform + ") - nommiin");
 
             // Add ace commands
             $gmedit["ace.AceCommands"].add({ name : "run", bindKey : { win : "F5", mac : "F5"}, exec : () => {
