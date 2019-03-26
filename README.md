@@ -18,6 +18,9 @@ builder was made to make [GMEdit](https://yellowafterlife.itch.io/gmedit) usable
 * support GMS 1 projects? (unlikely)
 * refactor entirety of `build.js`, it's too messy!
 
+# help
+* **my game compiles but doesn't open:** make sure you are using the correct runtime, as the default runtime is likely to be the oldest runtime you have downloaded
+
 # thanks
 * [YellowAfterlife](https://twitter.com/YellowAfterlife) for accepting PRs that help the core functionality of this plugn and answering my endless questions
 * [Sidorakh](https://github.com/sidorakh/) for testing and supporting the plugin
