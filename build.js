@@ -71,7 +71,7 @@ Builder.Run = function() {
     let usersettings = JSON.parse(Electron_FS.readFileSync(userpath + "/local_settings.json"));
     let projectnameg = buildname = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp"));
     let projectname = projectnameg.replace(new RegExp(" ", 'g'), "_");;
-    let tempdir = require("os").tmpdir(), temppath = (usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP/");
+    let tempdir = require("os").tmpdir(), temppath = (usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP" + (Builder.Platform == "mac" ? "/" : ""));
     let runtimepath = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
     let cmd = require("child_process");
     let ext = (Builder.Platform == "win" ? "win" : "ios");
