@@ -13,7 +13,7 @@ if (Builder.Platform.includes("Darwin") == true) {
     Builder = Object.assign(Builder, {
         Index: -1,
         Settings: document.createElement("div"),
-        Preferences: {forkArguments: "-alt", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
+        Preferences: {reuseTab: false, forkArguments: "-alt", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
         Save: function() {
             Electron_FS.writeFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json", JSON.stringify(this.Preferences));
         }
@@ -51,6 +51,8 @@ if (Builder.Platform.includes("Darwin") == true) {
 
             // Create builder settings menu
             let preferences = $gmedit["ui.Preferences"];
+            var t = preferences.addText(Builder.Settings, "Runtime Settings");
+            t.innerHTML = `<b>${t.innerHTML}</b>`; t.style = "border: 1px solid #495057; padding: 2px";
             preferences.addInput(Builder.Settings, "Runtime Location", Builder.Preferences.runtimeLocation, function(v) {
                 Builder.Preferences.runtimeLocation = v;
                 Builder.Save();
@@ -78,10 +80,6 @@ if (Builder.Platform.includes("Darwin") == true) {
                 Builder.Preferences.runtimeSelection = v;
                 Builder.Save();
             });
-            preferences.addInput(Builder.Settings, "Fork Arguments", Builder.Preferences.forkArguments, function(v) {
-                Builder.Preferences.forkArguments = v;
-                Builder.Save();
-            });
             if (Builder.Platform == "win") {
                 preferences.addButton(Builder.Settings, "Clean Virtual Drives", function() {
                     let cmd = require("child_process"), vds = window.localStorage.getItem("builder:drives") || "";
@@ -96,6 +94,17 @@ if (Builder.Platform.includes("Darwin") == true) {
                     Electron_Dialog.showMessageBox({message: "Finished cleaning virtual drives"});
                 });
             }
+            var t = preferences.addText(Builder.Settings, "builder Settings");
+            t.innerHTML = `<b>${t.innerHTML}</b>`; t.style = "border: 1px solid #495057; padding: 2px";
+            preferences.addInput(Builder.Settings, "Fork Arguments", Builder.Preferences.forkArguments, function(v) {
+                Builder.Preferences.forkArguments = v;
+                Builder.Save();
+            });
+            /*
+            preferences.addCheckbox(Builder.Settings, "Reuse Output Tab", Builder.Preferences.reuseTab, function(v) {
+                Builder.Preferences.reuseTab = v;
+                Builder.Save();
+            });*/
             preferences.addButton(Builder.Settings, "Back", function() {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();

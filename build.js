@@ -7,16 +7,19 @@ Builder = Object.assign(Builder, {
     Running: 0,
     Compiler: undefined,
     RunArgs: [],
-    Runner: undefined
+    Runner: undefined,
+    Errors: []
 });
 
 Builder.Parse = function(bString, bType) {
     if (bType == 0) { // GMAssetCompiler
-        if (bString.includes("Error : ") == true) {
-            // TODO: THIS!
-            /*let bInfo = bString.slice(7, bString.slice(7).indexOf(":") + 7).trim(), bError = bString.slice(8 + bString.slice(7).indexOf(":")).trim();
-            Electron_Dialog.showErrorBox("Compile Error", "INFO: " + bError);*/
-            return 0;
+        let bContents = (bString.toString()).split("\n");
+        for(let i = 0; i < bContents.length; i++) {
+            if (bContents[i].includes("Error : ") == true) {
+                Builder.Errors.push(bContents[i].slice(7).trim());
+            } else if (bContents[i].includes("Final Compile") == true && Builder.Errors.length > 0) {
+                return 1;
+            }
         }
     } else if (bType == 1) { // Runner
         if (bString.includes("ERROR!!! :: ") == true) {
@@ -118,12 +121,72 @@ Builder.Run = function() {
     Builder.Compiler.stdout.on("data", (e) => {
         if (Builder.Compiler == undefined) return;
         switch (Builder.Parse(e, 0)) {
+            case 1: Builder.Stop(); break;
             default: gmout.write(e); break;
             //case 1: Builder.Compiler.kill(); break;
         }
     });
     
     Builder.Compiler.addListener("close", function() {
+        
+        if (Builder.Errors.length > 0) {
+            let gmer = new $gmedit["gml.file.GmlFile"](`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`);
+            gmer.write = (e) => {
+                gmer.editor.session.setValue(gmer.editor.session.getValue() + e + "\n");
+            }
+
+            for(var i = 0; i < Builder.Errors.length; i++) {
+                var eError = Builder.Errors[i].slice(Builder.Errors[i].indexOf(":") + 1).trim(), eTrace = Builder.Errors[i].slice(0, Builder.Errors[i].indexOf(":")).trim().slice(4), eType = eTrace.slice(0, eTrace.indexOf("_")), eLine = eTrace.slice(eTrace.lastIndexOf("(") + 1, -1), eAsset = "";
+                switch (eType) {
+                    case "Script": case "Room": {
+                        eAsset = eTrace.slice(eTrace.indexOf("_") + 1, eTrace.lastIndexOf("("));
+                        let eGUID = $gmedit["gml.Project"].current.yyResourceGUIDs[eAsset], eELine = "";
+                        if (eGUID != undefined) {
+                            let ePath = $gmedit["gml.Project"].current.yyResources[eGUID].Value.resourcePath,
+                                eCode = $gmedit["electron.FileWrap"].readTextFileSync($gmedit["gml.Project"].current.dir + "/" + ePath.slice(0, ePath.lastIndexOf("\\") + 1) + eAsset + ".gml").split("\n");
+                            eELine = eCode[parseInt(eLine)];
+                        }
+
+                        gmer.write(`// Error in ${eType[0].toLowerCase() + eType.slice(1)} at @[${eAsset}:${eLine}]:\n// ${eError[0].toUpperCase() + eError.slice(1)}${(eELine != "" ? "\n" + eELine : "")}\n`);
+                        break;
+                    }
+
+                    case "Object": {
+                        eAsset = eTrace.slice(7, eTrace.lastIndexOf("_", eTrace.lastIndexOf("_") - 1));
+                        var eMain = eTrace.slice(eTrace.lastIndexOf("_", eTrace.lastIndexOf("_") - 1) + 1), eSub = eMain.slice(eMain.indexOf("_") + 1);
+                        eMain = eMain.slice(0, eMain.indexOf("_"));
+                        eSub = eSub.slice(0, eSub.indexOf("("));
+                    
+                        // get gmlive event
+                        for(var j = 0; j < $gmedit["parsers.GmlEvent"].t2sc.length; j++) {
+                            if ($gmedit["parsers.GmlEvent"].t2sc[j] == eMain) {
+                                eName = $gmedit["parsers.GmlEvent"].i2s[j][eSub];
+                                break;
+                            }
+                        }
+
+                        // capture line
+                        let eGUID = $gmedit["gml.Project"].current.yyResourceGUIDs[eAsset], eELine = "";
+                        if (eGUID != undefined) {
+                            let ePath = $gmedit["gml.Project"].current.yyResources[eGUID].Value.resourcePath, eCode = $gmedit["electron.FileWrap"].readTextFileSync($gmedit["gml.Project"].current.dir + "/" + ePath.slice(0, ePath.lastIndexOf("/") + 1) + eMain + "_" + eSub + ".gml").split("\n");
+                            eELine = eCode[parseInt(eLine)];
+                        }
+
+                        gmer.write(`// Error in object at @[${eAsset}(${eName}):${eLine}]:\n// ${eError[0].toUpperCase() + eError.slice(1)}${(eELine != "" ? "\n" + eELine + "" : "")}\n`);
+                        break;
+                    }
+
+                    default: {
+                        eAsset = eTrace.slice(eTrace.indexOf("_") + 1, eTrace.lastIndexOf("("));
+                        gmer.write(`// Error in ${eAsset} at line ${eLine}:\n// ${eError[0].toUpperCase() + eError.slice(1)}\n`);
+                        break;
+                    }
+                }
+            }
+            $gmedit["gml.file.GmlFile"].openTab(gmer);
+            Builder.Errors = [];
+            return;
+        }
         if (Builder.Compiler == undefined) return;
         // finished compiling, now run!
         Builder.Running = 2;
