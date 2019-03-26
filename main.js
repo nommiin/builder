@@ -100,7 +100,7 @@ if (Builder.Platform.includes("Darwin") == true) {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.6 (" + Builder.Platform + ") - nommiin");
+            preferences.addText(Builder.Settings, "builder v0.7 (" + Builder.Platform + ") - nommiin");
 
             // Add ace commands
             $gmedit["ace.AceCommands"].add({ name : "run", bindKey : { win : "F5", mac : "F5"}, exec : () => {
@@ -108,21 +108,21 @@ if (Builder.Platform.includes("Darwin") == true) {
                     Builder.Run();
                 }
             }}, "Run");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Compile and launch your project", exec: "run", title: "Run"});
+            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Compile and run your project", exec: "run", title: "Run"});
 
             $gmedit["ace.AceCommands"].add({ name : "stop", bindKey : { win : "F6", mac : "F6"}, exec : () => {
                 if ( $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1].enabled == true) {
                     Builder.Stop();
                 }
             }}, "Stop");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Stop the currently running compiler or runner", exec: "stop", title: "Stop"});
+            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Stop compiler or runner process", exec: "stop", title: "Stop"});
 
             $gmedit["ace.AceCommands"].add({ name : "fork", bindKey : { win : "F7", mac : "F7"}, exec : () => {
                 if ( $gmedit["ui.MainMenu"].menu.items[Builder.Index + 2].enabled == true) {
                     Builder.Fork();
                 }
             }}, "Fork");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Create a new instance of the currently active runner", exec: "fork", title: "Fork"});
+            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Fork instance of runner", exec: "fork", title: "Fork"});
 
             // Hook into preferences menu
             let buildMain = preferences.buildMain;
@@ -176,7 +176,7 @@ if (Builder.Platform.includes("Darwin") == true) {
     });
 
     GMEdit.on("projectClose", function() {
-        for(var i = 0; i < 1/*2*/; i++) {
+        for(var i = 0; i < 3; i++) {
             $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = false;
         }
     });
