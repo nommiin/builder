@@ -290,6 +290,7 @@ Builder.Stop = function() {
     }
     for(var i = 0; i < 2; i++) $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1 + i].enabled = false;
     Builder.Running = 0;
+    Builder.Errors = [];
 }
 
 Builder.Fork = function() {
