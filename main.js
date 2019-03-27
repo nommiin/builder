@@ -13,7 +13,7 @@ if (Builder.Platform.includes("Darwin") == true) {
     Builder = Object.assign(Builder, {
         Index: -1,
         Settings: document.createElement("div"),
-        Preferences: {reuseTab: false, forkArguments: "-alt", gmsLocation: Electron_App.getPath("appData") + "\\GameMaker-Studio\\", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
+        Preferences: {reuseTab: false, saveCompile: false, forkArguments: "-alt", gmsLocation: Electron_App.getPath("appData") + "\\GameMaker-Studio\\", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
         Save: function() {
             Electron_FS.writeFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json", JSON.stringify(this.Preferences));
         }
@@ -114,11 +114,19 @@ if (Builder.Platform.includes("Darwin") == true) {
                 Builder.Preferences.reuseTab = v;
                 Builder.Save();
             });*/
+            preferences.addCheckbox(Builder.Settings, "Save Upon Compile", Builder.Preferences.saveCompile, function(v) {
+                Builder.Preferences.saveCompile = v;
+                Builder.Save();
+            });
+            preferences.addCheckbox(Builder.Settings, "Reuse Output Tab", Builder.Preferences.reuseTab, function(v) {
+                Builder.Preferences.reuseTab = v;
+                Builder.Save();
+            });
             preferences.addButton(Builder.Settings, "Back", function() {
                 preferences.setMenu(preferences.menuMain);
                 Builder.Save();
             });
-            preferences.addText(Builder.Settings, "builder v0.9 (" + Builder.Platform + ") - nommiin");
+            preferences.addText(Builder.Settings, "builder v0.10 (" + Builder.Platform + ") - nommiin");
 
             // Add ace commands
             $gmedit["ace.AceCommands"].add({ name : "run", bindKey : { win : "F5", mac : "F5"}, exec : () => {

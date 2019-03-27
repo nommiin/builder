@@ -66,6 +66,17 @@ Builder.Parse = function(bString, bType) {
 }
 
 Builder.Run = function() {
+    // save project if enabled
+    if (Builder.Preferences.saveCompile == true) {
+        var fChanged = document.querySelectorAll(".chrome-tab-changed");
+        for(let i = 0; i < fChanged.length; i++) {
+            var fGet = fChanged[i].gmlFile;
+            if (fGet.__changed == true && fGet.path != null) {
+                fGet.save();
+            }
+        }
+    }
+
     // collect local settings
     var tempdir = require("os").tmpdir();
     if (Builder.Version == 2) {
@@ -89,13 +100,33 @@ Builder.Run = function() {
     }
 
     // create output tab
-    let t = new Date(), p = performance.now();
-    gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\nUsing runtime: ${runtimepath}\n`);
-    gmout.write = (e) => {
-        gmout.editor.session.setValue(gmout.editor.session.getValue() + e);
-        if (document.querySelector(".chrome-tab-current").gmlFile == gmout) aceEditor.gotoLine(aceEditor.session.getLength());
+    let t = new Date(), p = performance.now(), r = false;
+    if (Builder.Preferences.reuseTab == true) {
+        let fFind = document.querySelectorAll(".chrome-tab");
+        for(let i = 0; i < fFind.length; i++) {
+            //console.log
+            if (fFind[i].gmlFile.name.slice(0, 8) == "Output (") {
+                let fTime = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`;
+                fFind[i].childNodes.forEach(e=>{if(e.className == "chrome-tab-title"){e.innerText=`Output (${fTime})`}});
+                gmout = fFind[i].gmlFile;
+                
+                r = true;
+                console.log("reusing tab!");
+                gmout.editor.session.setValue(`Compile Started: ${fTime}\nUsing runtime: ${runtimepath}\n`);
+                $gmedit["ui.ChromeTabs"].impl.setCurrentTab(fFind[i]);
+                break;
+            }
+        }
     }
-    $gmedit["gml.file.GmlFile"].openTab(gmout);
+
+    if (r == false) {
+        gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\nUsing runtime: ${runtimepath}\n`);
+        gmout.write = (e) => {
+            gmout.editor.session.setValue(gmout.editor.session.getValue() + e);
+            if (document.querySelector(".chrome-tab-current").gmlFile == gmout) aceEditor.gotoLine(aceEditor.session.getLength());
+        }
+        $gmedit["gml.file.GmlFile"].openTab(gmout);
+    }
     
     // make sure assetcompiler exists
     if (Electron_FS.existsSync(`${runtimepath}${Builder.Version == 2 ? "/bin/" : ""}GMAssetCompiler.exe`) == false) {
