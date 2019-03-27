@@ -66,6 +66,9 @@ Builder.Parse = function(bString, bType) {
 }
 
 Builder.Run = function() {
+    // clear errors
+    Builder.Errors = [];
+    
     // save project if enabled
     if (Builder.Preferences.saveCompile == true) {
         var fChanged = document.querySelectorAll(".chrome-tab-changed");
