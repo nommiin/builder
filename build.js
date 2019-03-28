@@ -140,7 +140,7 @@ Builder.Run = function() {
     if (Builder.Platform == "win") {
         let drives = cmd.execSync("wmic logicaldisk get caption").toString().replace("Caption", "").split(":").map(c => c.trim());
         while (Builder.Drive == "" || drives.includes(Builder.Drive) == true) {
-            Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 26)));
+            Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
         }
         gmout.write(`Creating virtual drive: ${Builder.Drive}\n`);
         cmd.execSync(`subst ${Builder.Drive}: ${temppath}`);
