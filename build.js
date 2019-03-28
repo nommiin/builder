@@ -114,7 +114,6 @@ Builder.Run = function() {
                 gmout = fFind[i].gmlFile;
                 
                 r = true;
-                console.log("reusing tab!");
                 gmout.editor.session.setValue(`Compile Started: ${fTime}\nUsing runtime: ${runtimepath}\n`);
                 $gmedit["ui.ChromeTabs"].impl.setCurrentTab(fFind[i]);
                 break;
