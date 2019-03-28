@@ -20,6 +20,7 @@ builder was made to make [GMEdit](https://yellowafterlife.itch.io/gmedit) usable
 
 # help
 * **my game compiles but doesn't open:** make sure you are using the correct runtime, as the default runtime is likely to be the oldest runtime you have downloaded
+* **an error occurs in GMEdit but not in GMS 2:** again, this is likely an issue with the default runtime that builder selects. be sure to check and make sure that the runtime builder is using is the same as in GMS 2
 
 # thanks
 * [YellowAfterlife](https://twitter.com/YellowAfterlife) for accepting PRs that help the core functionality of this plugn and answering my endless questions
