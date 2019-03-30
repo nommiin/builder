@@ -1,5 +1,5 @@
 Builder = Object.assign(Builder, {
-    Extension: (Builder.Platform == "win" ? "win" : "ios"),
+    Extension: (Builder.Platform.includes("Windows") == true ? "win" : "ios"),
     Command: require("child_process"),
     Compiler: undefined,
     Output: undefined,
@@ -61,6 +61,9 @@ Builder = Object.assign(Builder, {
             Builder.Output.output = true;
             Builder.Output.Write = function(e, n=true) {
                 this.editor.session.setValue(this.editor.session.getValue() + (n ? "\n" : "") + e);
+                if (aceEditor.session.gmlFile == this) {
+                    aceEditor.gotoLine(aceEditor.session.getLength());
+                }
             }
             GmlFile.openTab(Builder.Output);
         }
