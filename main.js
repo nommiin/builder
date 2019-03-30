@@ -1,211 +1,185 @@
+if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
-/*
-$gmedit["gml.Project"].current
-*/
-Builder = {Platform: require("os").type(), Version: 0};
-if (Builder.Platform.includes("Windows") == true) Builder.Platform = "win";
-if (Builder.Platform.includes("Darwin") == true) {
-    Builder.Platform = "mac";
-    process.env.ProgramData = "/Users/Shared";
-}
+Builder = {
+    Version: "1.0",
+    MenuIndex: -1,
+    Platform: require("os").type(),
+    PreferencesPath: Electron_App.getPath("userData") + "/GMEdit/config/Builder-preferences.json",
+    PreferencesElement: document.createElement("div"),
+    Preferences: {
+        reuseTab: false,
+        saveCompile: false,
+        displayLine: true,
+        forkArguments: "-alt",
+        runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
+        runtimeSelection: "",
+        runtimeList: []
+    },
+    SavePreferences: function() {
+        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences));
+    },
+    LoadPreferences: function() {
+        return Object.assign(this.Preferences, JSON.parse(Electron_FS.readFileSync(this.PreferencesPath)));
+    },
+    GetRuntimes: function(path) {
+        let Runtimes = [];
+        Electron_FS.readdirSync(path).forEach((e) => {
+            let RuntimeStat = Electron_FS.statSync(path + e);
+            if (RuntimeStat.isDirectory() == true) {
+                Runtimes.push(e);
+            }
+        });
+        return Runtimes;
+    },
+    Initalize: function() {
+        // Check if platform is supported
+        this.Platform = (this.Platform.includes("Windows") ? "win" : (this.Platform.includes("Darwin") ? "mac" : "unknown"));
+        if (this.Platform == "unknown") {
+            Electron_Dialog.showErrorBox("builder error", `builder v${Builder.Version} is not supported on your platform (${require("os").type()})`);
+            return false;
+        }
+
+        // Load preferences file
+        if (Electron_FS.existsSync(this.PreferencesPath) == true) {
+            try {
+                this.Preferences = this.LoadPreferences();
+            } catch(e) {
+                console.error("builder - Failed to read or parse preferences file.");
+            }
+        } else {
+            this.SavePreferences();
+        }
+        this.Preferences.runtimeList = [];
+
+        // Gather list of runtimes
+        this.Preferences.runtimeList = this.GetRuntimes(this.Preferences.runtimeLocation);
+        if (this.Preferences.runtimeList.length <= 0) {
+            Electron_Dialog.showMessageBox({type: "warning", message: "builder was unable to find any runtimes, please verify your runtime location and rescan."});
+        }
+        return true;
+    }
+};
 
 (function() {
-    Builder = Object.assign(Builder, {
-        Index: -1,
-        Settings: document.createElement("div"),
-        Preferences: {reuseTab: false, saveCompile: false, forkArguments: "-alt", gmsLocation: Electron_App.getPath("appData") + "\\GameMaker-Studio\\", runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/", runtimeList: Electron_FS.readdirSync(process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"), runtimeSelection: ""},
-        Save: function() {
-            Electron_FS.writeFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json", JSON.stringify(this.Preferences));
-        }
-    });
-
     GMEdit.register("builder", {
-        init: ()=> {
-            // check for windows
-            if (Builder.Platform != "win" && Builder.Platform != "mac") {
-                Electron_Dialog.showErrorBox("Error", "builder is not supported on non-Windows/macOS platforms.");
+        init: function() {
+            // Initalize Builder!
+            if (Builder.Initalize() == false) {
+                console.error("builder - Failed to initalize.");
                 return;
             }
 
-            // Register main menu options
-            let menu = $gmedit["ui.MainMenu"].menu;
-            menu.items.forEach((item, index) => {
-                if (item.label.toLowerCase() == "close project") {
-                    //menu.insert(++index, new Electron_MenuItem({label: "Stop Project", accelerator: "F6", enabled: false, click: Builder.Debug}));
-                    menu.insert(++index, new Electron_MenuItem({label: "Fork", accelerator: "F7", enabled: false, click: Builder.Fork}));
-                    menu.insert(index, new Electron_MenuItem({label: "Stop", accelerator: "F6", enabled: false, click: Builder.Stop}));
-                    menu.insert(index, new Electron_MenuItem({label: "Run", accelerator: "F5", enabled: false, click: Builder.Run}));
-                    menu.insert(index, new Electron_MenuItem({type: "separator"}));
-                    Builder.Index = index + 1;
-                    return;
-                }
-            });
+            // Create main menu items!
+            let MainMenu = $gmedit["ui.MainMenu"].menu;
+            MainMenu.items.forEach((item, index) => {if (item.label.toLowerCase() == "close project") {
+                Builder.MenuIndex = ++index + 1;
+                MainMenu.insert(index, new Electron_MenuItem({type: "separator"}));
+                MainMenu.insert(++index, new Electron_MenuItem({label: "Run", accelerator: "F5", enabled: false, click: Builder.Run}));
+                MainMenu.insert(++index, new Electron_MenuItem({label: "Stop", accelerator: "F6", enabled: false, click: Builder.Stop}));
+                MainMenu.insert(++index, new Electron_MenuItem({label: "Fork", accelerator: "F7", enabled: false, click: Builder.Fork}));
+                return;
+            }});
 
-            // Load builder preferences
-            Builder.Preferences.runtimeSelection = Builder.Preferences.runtimeList[0];
-            if (Electron_FS.existsSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json") == true) {
-                Builder.Preferences = Object.assign(Builder.Preferences, JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("userData") + "/GMEdit/config/builder-preferences.json")));
-            } else {
-                Builder.Save();
-            }
-
-            // Create builder settings menu
-            let preferences = $gmedit["ui.Preferences"];
-            var t = preferences.addText(Builder.Settings, "Runtime Settings");
-            t.innerHTML = `<b>${t.innerHTML}</b>`; t.style = "border: 1px solid #495057; padding: 2px";
-            preferences.addInput(Builder.Settings, "Runtime Location", Builder.Preferences.runtimeLocation, function(v) {
-                Builder.Preferences.runtimeLocation = v;
-                Builder.Save();
-            });
-            preferences.addButton(Builder.Settings, "Reset Location", function() {
+            // Create preferences menu!
+            let Preferences = $gmedit["ui.Preferences"];
+            Preferences.addText(Builder.PreferencesElement, "").innerHTML = "<b>Runtime Settings</b>";
+            Preferences.addInput(Builder.PreferencesElement, "Runtime Location", Builder.Preferences.runtimeLocation, (value) => { Builder.Preferences.runtimeLocation = value; Builder.SavePreferences(); });
+            Preferences.addButton(Builder.PreferencesElement, "Reset Location", () => { 
                 Builder.Preferences.runtimeLocation = process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/";
-                Builder.Settings.children[1].value = Builder.Preferences.runtimeLocation;
-                Builder.Save();
+                Builder.PreferencesElement.children[1].children[1].value = Builder.Preferences.runtimeLocation;
+                Builder.SavePreferences();
             });
-            preferences.addButton(Builder.Settings, "Reload Runtimes", function() {
-                try {
-                    Builder.Preferences.runtimeList = Electron_FS.readdirSync(Builder.Preferences.runtimeLocation);
-                    Builder.Settings.children[3].children[1].innerHTML = "";
-                    Builder.Preferences.runtimeList.forEach((e, i) => {
-                        let o = document.createElement("option");
-                        o.value = e;
-                        o.innerHTML = e;
-                        Builder.Settings.children[3].children[1].appendChild(o);
-                    });
-                } catch (e) {
-                    Electron_Dialog.showErrorBox("Error", "The given runtime location does not exist!");
-                }
+            Preferences.addButton(Builder.PreferencesElement, "Rescan Runtimes", () => {
+                let Selection = Builder.PreferencesElement.children[4].children[1];
+                Selection.innerHTML = "";
+                Builder.Preferences.runtimeList = Builder.GetRuntimes(Builder.Preferences.runtimeLocation);
+                Builder.Preferences.runtimeList.forEach((e, i) => {
+                    let Option = document.createElement("option");
+                    Option.value = e;
+                    Option.innerHTML = Option.value;
+                    Selection.appendChild(Option);
+                });
             });
-            preferences.addDropdown(Builder.Settings, "Current Runtime", Builder.Preferences.runtimeSelection, Builder.Preferences.runtimeList, function(v) {
-                Builder.Preferences.runtimeSelection = v;
-                Builder.Save();
+            Preferences.addDropdown(Builder.PreferencesElement, "Current Runtime", Builder.Preferences.runtimeSelection, Builder.Preferences.runtimeList, (value) => {
+                Builder.Preferences.runtimeSelection = value;
+                Builder.SavePreferences();
             });
-            if (Builder.Platform == "win") {
-                preferences.addButton(Builder.Settings, "Clean Virtual Drives", function() {
-                    let cmd = require("child_process"), vds = window.localStorage.getItem("builder:drives") || "";
-                    if (vds.length > 0) {
-                        for(var j = 0; j < vds.length; j++) {
-                            try {
-                                cmd.execSync("subst /d " + vds[j] + ":");
-                            } catch(e) {}
-                        }
+            if (Builder.Platform =="win") {
+                Preferences.addButton(Builder.PreferencesElement, "Clean Virtual Drives", () => {
+                    let Command = require("child_process"), Drives = window.localStorage.getItem("builder:drives") || "";
+                    for(let i = 0; i < Drives.length; i++) {
+                        try {
+                            Command.execSync(`subst /d ${Drives[i]}:`);
+                        } catch(e) {};
                     }
                     window.localStorage.setItem("builder:drives", "");
-                    Electron_Dialog.showMessageBox({message: "Finished cleaning virtual drives"});
+                    Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: "Finished cleaning virtual drives."});
                 });
             }
-            var t = preferences.addText(Builder.Settings, "builder Settings");
-            t.innerHTML = `<b>${t.innerHTML}</b>`; t.style = "border: 1px solid #495057; padding: 2px";
-            preferences.addInput(Builder.Settings, "Fork Arguments", Builder.Preferences.forkArguments, function(v) {
-                Builder.Preferences.forkArguments = v;
-                Builder.Save();
-            });
-            /*
-            if (Builder.Platform == "win") {
-                var t = preferences.addText(Builder.Settings, "GMS 1 Settings");
-                t.innerHTML = `<b>${t.innerHTML}</b>`; t.style = "border: 1px solid #495057; padding: 2px";
-                preferences.addInput(Builder.Settings, "Installation Path", Builder.Preferences.gmsLocation, function(v) {
-                    Builder.Preferences.gmsLocation = v;
-                    Builder.Save();
-                });
-            }*/
-            /*
-            preferences.addCheckbox(Builder.Settings, "Reuse Output Tab", Builder.Preferences.reuseTab, function(v) {
-                Builder.Preferences.reuseTab = v;
-                Builder.Save();
-            });*/
-            preferences.addCheckbox(Builder.Settings, "Save Upon Compile", Builder.Preferences.saveCompile, function(v) {
-                Builder.Preferences.saveCompile = v;
-                Builder.Save();
-            });
-            preferences.addCheckbox(Builder.Settings, "Reuse Output Tab", Builder.Preferences.reuseTab, function(v) {
-                Builder.Preferences.reuseTab = v;
-                Builder.Save();
-            });
-            preferences.addButton(Builder.Settings, "Back", function() {
-                preferences.setMenu(preferences.menuMain);
-                Builder.Save();
-            });
-            preferences.addText(Builder.Settings, "builder v0.9 (" + Builder.Platform + ") - nommiin");
-
-            // Add ace commands
-            $gmedit["ace.AceCommands"].add({ name : "run", bindKey : { win : "F5", mac : "F5"}, exec : () => {
-                if ( $gmedit["ui.MainMenu"].menu.items[Builder.Index].enabled == true) {
-                    Builder.Run();
-                }
-            }}, "Run");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Compile and run your project", exec: "run", title: "Run"});
-
-            $gmedit["ace.AceCommands"].add({ name : "stop", bindKey : { win : "F6", mac : "F6"}, exec : () => {
-                if ( $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1].enabled == true) {
-                    Builder.Stop();
-                }
-            }}, "Stop");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Stop compiler or runner process", exec: "stop", title: "Stop"});
-
-            $gmedit["ace.AceCommands"].add({ name : "fork", bindKey : { win : "F7", mac : "F7"}, exec : () => {
-                if ( $gmedit["ui.MainMenu"].menu.items[Builder.Index + 2].enabled == true) {
-                    Builder.Fork();
-                }
-            }}, "Fork");
-            $gmedit["ace.AceCommands"].addToPalette({name: "builder: Fork instance of runner", exec: "fork", title: "Fork"});
-
-            // Hook into preferences menu
-            let buildMain = preferences.buildMain;
-            preferences.buildMain = function(arguments) {
-                let _return = buildMain.apply(this, arguments);
-                preferences.addButton(_return, "builder Settings", function() {
-                    preferences.setMenu(Builder.Settings);
-                });
-                return _return;
+            Preferences.addText(Builder.PreferencesElement, "").innerHTML = "<b>Builder Settings</b>";
+            Preferences.addInput(Builder.PreferencesElement, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(Builder.PreferencesElement, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(Builder.PreferencesElement, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(Builder.PreferencesElement, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
+            Preferences.addButton(Builder.PreferencesElement, "Back", () => { Preferences.setMenu(Preferences.menuMain); Builder.SavePreferences(); });
+            Preferences.addText(Builder.PreferencesElement, `builder v${Builder.Version} by nommiin`);
+            let buildMain = Preferences.buildMain;
+            Preferences.buildMain = function(arguments) {
+                let Return = buildMain.apply(this, arguments);
+                Preferences.addButton(Return, "builder Settings", function() {
+                    Preferences.setMenu(Builder.PreferencesElement);
+                })
+                return Return;
             }
 
-            // Hook into finishedIndexing method of Project.hx
-            let finishedIndexing = $gmedit["gml.Project"].prototype.finishedIndexing;
-            $gmedit["gml.Project"].prototype.finishedIndexing = function(arguments) {
-                let _return = finishedIndexing.apply(this, arguments);
+            // Add ace commands!
+            let AceCommands = $gmedit["ace.AceCommands"];
+            AceCommands.add({ name: "run", bindKey: {win: "F5", mac: "F5"}, exec: Builder.Run }, "Run");
+            AceCommands.addToPalette({name: "builder: Compile and run your project", exec: "run", title: "Run"});
+            AceCommands.add({ name: "stop", bindKey: {win: "F6", mac: "F6"}, exec: Builder.Stop }, "Stop");
+            AceCommands.addToPalette({name: "builder: Stop compiler or runner process", exec: "stop", title: "Stop"});
+            AceCommands.add({ name: "fork", bindKey: {win: "F7", mac: "F7"}, exec: Builder.Fork }, "Fork");
+            AceCommands.addToPalette({name: "builder: Fork instance of runner", exec: "fork", title: "Fork"});
+            
+            // Hook into finishedIndexing
+            let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
+            Project.prototype.finishedIndexing = function(arguments) {
+                let Return = finishedIndexing.apply(this, arguments);
                 this.configs = ["default"];
-                JSON.parse(Electron_FS.readFileSync($gmedit["gml.Project"].current.path)).configs.forEach(config => {
-                    config.split(";").forEach(c => {
-                        if (this.configs.includes(c) == false) this.configs.push(c);
-                    });
+                JSON.parse(Electron_FS.readFileSync(Project.current.path)).configs.forEach((e) => {
+                    e.split(";").forEach((e) => { if (this.configs.includes(e) == false) this.configs.push(e); });
                 });
-
-                this.config = window.localStorage.getItem(`config:${$gmedit["gml.Project"].current.path}`);
-                if (this.config == null || this.configs.includes(this.config) == false) {
-                    this.config = this.configs[0];
-                    window.localStorage.setItem(`config:${$gmedit["gml.Project"].current.path}`, this.config);
-                }
-
-                let configs = $gmedit["ui.treeview.TreeView"].makeAssetDir("Configurations", "");
-                this.configs.forEach(c => {
-                    let config = $gmedit["ui.treeview.TreeView"].makeItem(c);
-                    config.addEventListener("dblclick", function(e) {
-                        $gmedit["gml.Project"].current.config = this.innerText;
-                        window.localStorage.setItem(`config:${$gmedit["gml.Project"].current.path}`, this.innerText);
-                        document.getElementById("project-name").innerText = `${$gmedit["gml.Project"].current.displayName} (${this.innerText})`;
+                this.config = (this.configs.includes(window.localStorage.getItem(`config:${Project.current.path}`)) ? window.localStorage.getItem(`config:${Project.current.path}`) : "default");
+                window.localStorage.setItem(`config:${Project.current.path}`, this.config);  
+                let TreeView = $gmedit["ui.treeview.TreeView"], Configurations = TreeView.makeAssetDir("Configurations", "");
+                this.configs.forEach((e) => {
+                    let Configuration = TreeView.makeItem(e);
+                    Configuration.addEventListener("dblclick", function() {
+                        Project.current.config = this.innerText;
+                        window.localStorage.setItem(`config:${Project.current.path}`, Project.current.config);
+                        document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.innerText})`;
                     });
-                    configs.treeItems.appendChild(config);
+                    Configurations.treeItems.appendChild(Configuration);
                 });
-                $gmedit["ui.treeview.TreeView"].element.appendChild(configs);
-                document.getElementById("project-name").innerText = `${this.displayName} (${this.config})`
-                return _return;
+                TreeView.element.appendChild(Configurations);
+                document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.config})`;
+                return Return;
             }
         }
     });
 
     GMEdit.on("projectOpen", function() {
-        for(var i = 0; i < 1/*2*/; i++) {
-            //$gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = ((($gmedit["gml.Project"].current.version == 1 && Builder.Platform == "win") || $gmedit["gml.Project"].current.version == 2) ? true : false);
-            $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = ($gmedit["gml.Project"].current.version == 2 ? true : false);
+        let MainMenu = $gmedit["ui.MainMenu"].menu;
+        for(let i = 0; i < 3; i++) {
+            MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
-        Builder.Version = $gmedit["gml.Project"].current.version;
-        
+        if ($gmedit["gml.Project"].current.version == 2) MainMenu.items[Builder.MenuIndex].enabled = true;
     });
 
     GMEdit.on("projectClose", function() {
-        for(var i = 0; i < 3; i++) {
-            $gmedit["ui.MainMenu"].menu.items[Builder.Index + i].enabled = false;
+        let MainMenu = $gmedit["ui.MainMenu"].menu;
+        for(let i = 0; i < 3; i++) {
+            MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
     });
 })();

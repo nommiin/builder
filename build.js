@@ -1,305 +1,261 @@
-Builder.Random = function() {
-    return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase();
-}
-
 Builder = Object.assign(Builder, {
-    Drive: "",
-    Running: 0,
+    Command: require("child_process"),
     Compiler: undefined,
-    RunArgs: [],
-    Runner: undefined,
-    Errors: []
-});
+    Output: undefined,
+    ErrorMet: false,
+    Runner: [],
+    Errors: [],
+    Outpath: "",
+    Runtime: "",
+    Drive: "",
+    Run: function() {
+        // Make sure a project is open!
+        if ($gmedit["gml.Project"].current.version == 0) return;
 
-Builder.Parse = function(bString, bType) {
-    if (bType == 0) { // GMAssetCompiler
-        let bContents = (bString.toString()).split("\n");
-        for(let i = 0; i < bContents.length; i++) {
-            if (bContents[i].includes("Error : ") == true) {
-                Builder.Errors.push(bContents[i].slice(7).trim());
-            } else if (bContents[i].includes("Final Compile") == true && Builder.Errors.length > 0) {
-                return 1;
-            }
-        }
-    } else if (bType == 1) { // Runner
-        if (bString.includes("ERROR!!! :: ") == true) {
-            let bContents = bString.split("\n");
-            for(let i = 0; i < bContents.length; i++) {
-                if (bContents[i].toLowerCase().includes("stack frame is") == true) {
-                    var eName = "", bType = bContents[i + 1].slice(4, bContents[i + 1].indexOf("_", 4)), bAsset = bContents[i + 1].slice(bContents[i + 1].indexOf("_", 4) + 1), bLine = parseInt(bContents[i + 1].slice(bContents[i + 1].lastIndexOf("line") + 4, bContents[i + 1].lastIndexOf(")")).trim());
-                    if (bType == "Script") {
-                        bAsset = bAsset.slice(0, bAsset.indexOf("(") - 1);
-                    } else if (bType == "Object") {
-                        let bEvent = bContents[i + 1].slice(bContents[i + 1].lastIndexOf("_", bContents[i + 1].lastIndexOf("_") -1) + 1, bContents[i + 1].lastIndexOf("(")).trim();
-                        bAsset = bAsset.slice(0, bAsset.lastIndexOf("_")); bAsset = bAsset.slice(0, bAsset.lastIndexOf("_"));
+        // Clear any past errors!
+        Builder.Errors = [];
+        Builder.ErrorMet = false;
 
-                        // get GMEdit name
-                        let eMain = bEvent.slice(0, bEvent.lastIndexOf("_")), eSub = parseInt(bEvent.slice(bEvent.lastIndexOf("_") + 1).trim());
-                        for(var j = 0; j < $gmedit["parsers.GmlEvent"].t2sc.length; j++) {
-                            if ($gmedit["parsers.GmlEvent"].t2sc[j] == eMain) {
-                                eName = $gmedit["parsers.GmlEvent"].i2s[j][eSub];
-                                break;
-                            }
-                        }
-                    }
-
-                    if ($gmedit["ui.OpenDeclaration"].openLocal(bAsset, 0) == true) {
-                        setTimeout(() => {
-                            let bOffset = 0;
-                            if (eName != "") {
-                                for(let i = 0; i < aceEditor.session.getLength(); i++) {
-                                    if (aceEditor.session.getLine(i).includes("#event " + eName) == true) {
-                                        bOffset = ++i;
-                                        break;
-                                    }
-                                }
-                            }
-                            aceEditor.gotoLine(bOffset + bLine);
-                        }, 500);
-                    }
-
+        // Save all edits if enabled!
+        if (Builder.Preferences.saveCompile == true) {
+            let Changed = document.querySelectorAll(".chrome-tab-changed");
+            for(let i = 0; i < Changed.length; i++) {
+                let File = Changed[i].gmlFile;
+                if (File.__changed == true && File.path != null) {
+                    File.save();
                 }
             }
         }
-    }
-    return 0;
-}
 
-Builder.Run = function() {
-    // clear errors
-    Builder.Errors = [];
-    
-    // save project if enabled
-    if (Builder.Preferences.saveCompile == true) {
-        var fChanged = document.querySelectorAll(".chrome-tab-changed");
-        for(let i = 0; i < fChanged.length; i++) {
-            var fGet = fChanged[i].gmlFile;
-            if (fGet.__changed == true && fGet.path != null) {
-                fGet.save();
-            }
+        // Find the temporary directory!
+        let Userpath = "", Temporary = require("os").tmpdir(), Name = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp")); Builder.Name = Builder.Sanitize(Name);
+        Builder.Runtime = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
+        if (Builder.Platform == "win") {
+            let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
+            Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
+            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${process.env.LOCALAPPDATA}/GameMakerStudio2`) + "/GMS2TEMP";
+        } else {
+
         }
-    }
-
-    // collect local settings
-    var tempdir = require("os").tmpdir();
-    if (Builder.Version == 2) {
-        var userpath = JSON.parse(Electron_FS.readFileSync((Builder.Platform == "win" ? Electron_App.getPath("appData") : ("/Users/" + process.env.LOGNAME + "/.config")) + "/GameMakerStudio2/um.json")); userpath = (Builder.Platform == "win" ? Electron_App.getPath("appData") : ("/Users/" + process.env.LOGNAME + "/.config")) + "/GameMakerStudio2/" + userpath.login.slice(0, userpath.login.indexOf("@")) + "_" + userpath.userID;
-        var usersettings = JSON.parse(Electron_FS.readFileSync(userpath + "/local_settings.json"));
-        var projectnameg = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp"));
-        var temppath = (usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP" + (Builder.Platform == "mac" ? "/" : ""));
-        var runtimepath = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
-    } else {
-        var projectnameg = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".project.gmx"));
-        var temppath = tempdir + "\\GameMakerStudio"//;(usersettings["machine.General Settings.Paths.IDE.TempFolder"] || (Builder.Platform == "win" ? (process.env.LOCALAPPDATA + "/GameMakerStudio2") : (tempdir.slice(0, tempdir.length - 1 * (tempdir[tempdir.length - 1] == "T")) + "GameMakerStudio2")) + "/GMS2TEMP" + (Builder.Platform == "mac" ? "/" : ""));
-        var runtimepath = Builder.Preferences.gmsLocation;
-    }
-    var projectname = projectnameg.replace(new RegExp(" ", 'g'), "_");
-    var cmd = require("child_process");
-    var ext = (Builder.Platform == "win" ? "win" : "ios");
-
-    // create temp path if needed
-    if (Electron_FS.existsSync(temppath) == false) {
-        Electron_FS.mkdirSync(temppath);
-    }
-
-    // create output tab
-    let t = new Date(), p = performance.now(), r = false;
-    if (Builder.Preferences.reuseTab == true) {
-        let fFind = document.querySelectorAll(".chrome-tab");
-        for(let i = 0; i < fFind.length; i++) {
-            //console.log
-            if (fFind[i].gmlFile.name.slice(0, 8) == "Output (") {
-                let fTime = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`;
-                fFind[i].childNodes.forEach(e=>{if(e.className == "chrome-tab-title"){e.innerText=`Output (${fTime})`}});
-                gmout = fFind[i].gmlFile;
-                
-                r = true;
-                gmout.editor.session.setValue(`Compile Started: ${fTime}\nUsing runtime: ${runtimepath}\n`);
-                $gmedit["ui.ChromeTabs"].impl.setCurrentTab(fFind[i]);
-                break;
-            }
-        }
-    }
-
-    if (r == false) {
-        gmout = new $gmedit["gml.file.GmlFile"](`Output (${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")})`, null, $gmedit["file.kind.misc.KPlain"].inst, `Compile Started: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\nUsing runtime: ${runtimepath}\n`);
-        gmout.write = (e) => {
-            gmout.editor.session.setValue(gmout.editor.session.getValue() + e);
-            if (document.querySelector(".chrome-tab-current").gmlFile == gmout) aceEditor.gotoLine(aceEditor.session.getLength());
-        }
-        $gmedit["gml.file.GmlFile"].openTab(gmout);
-    }
-    
-    // make sure assetcompiler exists
-    if (Electron_FS.existsSync(`${runtimepath}${Builder.Version == 2 ? "/bin/" : ""}GMAssetCompiler.exe`) == false) {
-        Electron_Dialog.showErrorBox("Failed to compile project.", "Could not find \"GMAssetCompiler.exe\" in " + runtimepath + "/bin/");
-        gmout.write(`\n!!!\n   Could not compile project as "GMAssetCompiler.exe" could not be found in ${runtimepath}\\bin\\\n!!!\n\n`);
-        return;
-    }
-
-    // create subst drive
-    gmout.write(`Using temporary directory: ${temppath}\n`);
-    if (Builder.Platform == "win") {
-        let drives = cmd.execSync("wmic logicaldisk get caption").toString().replace("Caption", "").split(":").map(c => c.trim());
-        while (Builder.Drive == "" || drives.includes(Builder.Drive) == true) {
-            Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
-        }
-        gmout.write(`Creating virtual drive: ${Builder.Drive}\n`);
-        cmd.execSync(`subst ${Builder.Drive}: ${temppath}`);
-        window.localStorage.setItem("builder:drives", (window.localStorage.getItem("builder:drives") || "") + Builder.Drive);
-        temppath = Builder.Drive + "://";
-    }
-    let outpath = temppath + projectname + "_" + Builder.Random();
-    gmout.write(`Using output directory: ${outpath}\n`);
-
-    // enable stop button
-    $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1].enabled = true;
-    Builder.Running = 1;
-
-    // run compiler!
-    if (Builder.Version == 2) {
-        Builder.Compiler = cmd.exec(`${(Builder.Platform == "mac" ? "/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono " : "")}${runtimepath}${Builder.Version == 2 ? "/bin/" : ""}GMAssetCompiler.exe /c /zpex /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${temppath}" /zpuf="${userpath}" /m=${Builder.Platform == "win" ? "windows" : "mac"} /tgt=64 /nodnd /cfg="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm /baseproject="${runtimepath}/BaseProject/BaseProject.yyp" "${$gmedit["gml.Project"].current.path}" /v /bt=run`);
-    } else {
-        Builder.Compiler = cmd.exec(`${runtimepath}GMAssetCompiler.exe /c /tp=2048 /obob=True /obpp=False /obru=True /obes=False /mv=1 /iv=0 /rv=0 /bv=0 /j=4 /gn="${projectname}" /td="${require("os").tmpdir()}" /m=${Builder.Platform == "win" ? "windows" : "mac"} /tgt=64 /config="${$gmedit["gml.Project"].current.config}" /o="${outpath}" /sh=True /cvm "${$gmedit["gml.Project"].current.path}"`);
-    }
-
-    // add compiler output
-    Builder.Compiler.stdout.on("data", (e) => {
-        if (Builder.Compiler == undefined) return;
-        switch (Builder.Parse(e, 0)) {
-            case 1: Builder.Stop(); break;
-            default: gmout.write(e); break;
-            //case 1: Builder.Compiler.kill(); break;
-        }
-    });
-    
-    Builder.Compiler.addListener("close", function() {
-        // check for errors
-        if (Builder.Errors.length > 0) {
-            let gmer = new $gmedit["gml.file.GmlFile"](`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`);
-            gmer.write = (e) => {
-                gmer.editor.session.setValue(gmer.editor.session.getValue() + e + "\n");
-            }
-
-            for(var i = 0; i < Builder.Errors.length; i++) {
-                var eError = Builder.Errors[i].slice(Builder.Errors[i].indexOf(":") + 1).trim(), eTrace = Builder.Errors[i].slice(0, Builder.Errors[i].indexOf(":")).trim().slice(4), eType = eTrace.slice(0, eTrace.indexOf("_")), eLine = eTrace.slice(eTrace.lastIndexOf("(") + 1, -1), eAsset = "";
-                switch (eType) {
-                    case "Script": case "Room": {
-                        eAsset = eTrace.slice(eTrace.indexOf("_") + 1, eTrace.lastIndexOf("("));
-                        let eGUID = $gmedit["gml.Project"].current.yyResourceGUIDs[eAsset], eELine = "";
-                        if (eGUID != undefined) {
-                            let ePath = $gmedit["gml.Project"].current.yyResources[eGUID].Value.resourcePath,
-                                eCode = $gmedit["electron.FileWrap"].readTextFileSync($gmedit["gml.Project"].current.dir + "/" + ePath.slice(0, ePath.lastIndexOf("\\") + 1) + eAsset + ".gml").split("\n");
-                            eELine = eCode[parseInt(eLine)];
-                        }
-
-                        gmer.write(`// Error in ${eType[0].toLowerCase() + eType.slice(1)} at @[${eAsset}:${eLine}]:\n// ${eError[0].toUpperCase() + eError.slice(1)}${(eELine != "" ? "\n" + eELine : "")}\n`);
-                        break;
-                    }
-
-                    case "Object": {
-                        eAsset = eTrace.slice(7, eTrace.lastIndexOf("_", eTrace.lastIndexOf("_") - 1));
-                        var eMain = eTrace.slice(eTrace.lastIndexOf("_", eTrace.lastIndexOf("_") - 1) + 1), eSub = eMain.slice(eMain.indexOf("_") + 1);
-                        eMain = eMain.slice(0, eMain.indexOf("_"));
-                        eSub = eSub.slice(0, eSub.indexOf("("));
-                    
-                        // get gmlive event
-                        for(var j = 0; j < $gmedit["parsers.GmlEvent"].t2sc.length; j++) {
-                            if ($gmedit["parsers.GmlEvent"].t2sc[j] == eMain) {
-                                eName = $gmedit["parsers.GmlEvent"].i2s[j][eSub];
-                                break;
-                            }
-                        }
-
-                        // capture line
-                        let eGUID = $gmedit["gml.Project"].current.yyResourceGUIDs[eAsset], eELine = "";
-                        if (eGUID != undefined) {
-                            let ePath = $gmedit["gml.Project"].current.yyResources[eGUID].Value.resourcePath, eCode = $gmedit["electron.FileWrap"].readTextFileSync($gmedit["gml.Project"].current.dir + "/" + ePath.slice(0, ePath.lastIndexOf("/") + 1) + eMain + "_" + eSub + ".gml").split("\n");
-                            eELine = eCode[parseInt(eLine)];
-                        }
-
-                        gmer.write(`// Error in object at @[${eAsset}(${eName}):${eLine}]:\n// ${eError[0].toUpperCase() + eError.slice(1)}${(eELine != "" ? "\n" + eELine + "" : "")}\n`);
-                        break;
-                    }
-
-                    default: {
-                        eAsset = eTrace.slice(eTrace.indexOf("_") + 1, eTrace.lastIndexOf("("));
-                        gmer.write(`// Error in ${eAsset} at line ${eLine}:\n// ${eError[0].toUpperCase() + eError.slice(1)}\n`);
-                        break;
-                    }
-                }
-            }
-            $gmedit["gml.file.GmlFile"].openTab(gmer);
-            Builder.Errors = [];
-            return;
-        }
-        if (Builder.Compiler == undefined) return;
+        if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);
         
-        // rename output
-        Electron_FS.renameSync(`${outpath}/${projectnameg}.${ext}`, `${outpath}/game.${ext}`)
+        // Create or reuse output tab!
+        let Time = new Date(), Create = true;
+        if (Builder.Preferences.reuseTab == true) {
+           document.querySelectorAll(".chrome-tab").forEach((e) => {
+                if (e.gmlFile.output != undefined || e.gmlFile.output == true) {
+                    $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
+                    e.childNodes.forEach((e) => { if (e.className == "chrome-tab-title") e.innerText = `Output (${Builder.GetTime(Time)})`; })
+                    e.gmlFile.editor.session.setValue("");
+                    Builder.Output = e.gmlFile;
+                    Create = false;
+                }
+            });
+        }
+        if (Create == true) {
+            let GmlFile = $gmedit["gml.file.GmlFile"];
+            Builder.Output = new GmlFile(`Output (${Builder.GetTime(Time)})`, null, $gmedit["file.kind.misc.KPlain"].inst, "");
+            Builder.Output.output = true;
+            Builder.Output.Write = function(e, n=true) {
+                this.editor.session.setValue(this.editor.session.getValue() + (n ? "\n" : "") + e);
+            }
+            GmlFile.openTab(Builder.Output);
+        }
+        Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${Builder.Preferences.runtimeSelection}`);
+        Builder.Output.Write("Using Temporary Directory: " + Temporary);
 
-        // finished compiling, now run!
-        Builder.Running = 2;
-        Builder.Compiler = undefined;
-        $gmedit["ui.MainMenu"].menu.items[Builder.Index + 2].enabled = true; // Fork button
-        gmout.write(`Compile completed in ${(performance.now() - p).toFixed(1)}ms\n`);
-        // check if runner exists
-        if (Electron_FS.existsSync(`${runtimepath}${Builder.Version == 2 ? "/windows/" : ""}Runner.exe`) == false) {
-            Electron_Dialog.showErrorBox("Failed to run game.", "Could not find \"Runner.exe\" in " + runtimepath + Builder.Version == 2 ? "/windows/" : "");
-            gmout.write(`\n!!!\n   Could not run project as "Runner.exe" could not be found in ${runtimepath}${Builder.Version == 2 ? "/windows/" : ""}\n!!!\n\n`);
-            gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
-            cmd.exec("subst /d " + Builder.Drive + ":");
-            Builder.Runner = undefined; Builder.Compiler = undefined;
+        // Check for GMAssetCompiler and Runner files!
+        if (Electron_FS.existsSync(`${Builder.Runtime}/bin/GMAssetCompiler.exe`) == false) {
+            Builder.Output.Write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
+            Builder.Stop();
+            return;
+        } else if (Electron_FS.existsSync(`${Builder.Runtime}/${Builder.Platform == "win" ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
+            Builder.Output.Write(`!!! Could not find ${Builder.Platform == "win" ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${Builder.Platform == "win" ? "windows/" : "mac/"}`);
+            Builder.Stop();
             return;
         }
+        $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + 1].enabled = true;
 
-        Builder.RunArgs = [(Builder.Platform == "win" ? `${runtimepath}${Builder.Version == 2 ? "/windows/" : ""}Runner.exe` : `${runtimepath}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`), ["-game", `${outpath}/game.${ext}`]];
-        Builder.Runner = cmd.spawn(Builder.RunArgs[0], Builder.RunArgs[1]);
-        Builder.Runner.addListener("close", function() {
-            if (Builder.Platform == "win") {
-                gmout.write(`Removing virtual drive: ${Builder.Drive}\n`);
-                cmd.exec("subst /d " + Builder.Drive + ":");
+        // Create substitute drive on Windows!
+        if (Builder.Platform == "win") {
+            let Drives = Builder.Command.execSync("wmic logicaldisk get caption").toString().replace("Caption", "").split(":").map(c => c.trim());
+            while (Builder.Drive == "" || Drives.includes(Builder.Drive) == true) {
+                Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
+            }
+            Builder.Command.execSync(`subst ${Builder.Drive}: ${Temporary}`);
+            Builder.Output.Write("Using Virtual Drive: " + Builder.Drive);
+            window.localStorage["builder:drives"] += Builder.Drive;
+            Temporary = Builder.Drive + ":/";
+        }
+        Builder.Outpath = Temporary + Name + "_" + Builder.Random();
+        Builder.Output.Write("Using Output Path: " + Builder.Outpath);
 
-                let vds = window.localStorage.getItem("builder:drives") || "";
-                window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
+        // Run the compiler!
+        if (Builder.Platform == "win") {
+            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, ["/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, `/m=windows`, "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
+        } else {
+
+        }
+
+        // Capture compiler output!
+        Builder.Compiler.stdout.on("data", (e) => {
+            switch (Builder.Parse(e, 0)) {
+                case 1: Builder.Stop();
+                default: Builder.Output.Write(e, false);
             }
-            for(var i = 0; i < 2; i++) {
-                $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1 + i].enabled = false;
-            }
-            Builder.Running = 0;
-            Builder.RunArgs = [];
-            Builder.Runner = undefined; Builder.Compiler = undefined;
         });
 
-        // add runner output
-        Builder.Runner.stdout.on("data", (e) => {
+        Builder.Compiler.on("close", (e) => {
+            // Rename output file!
+            if (Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
+            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.win`, `${Builder.Outpath}/${Builder.Name}.win`);
+            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
+            Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
+            $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + 2].enabled = true;
+            Builder.Compiler = undefined;
+        });
+    },
+    Stop: function() {
+        // Make sure a project is open!
+        if ($gmedit["gml.Project"].current.version == 0) return;
+
+        // Display errors and kill processes!
+        if (Builder.ErrorMet == true) Builder.Display();
+        if (Builder.Compiler != undefined) {
+            Builder.Compiler.kill();
+            Builder.Compiler = undefined;
+        }
+        if (Builder.Runner.length > 0) {
+            Builder.Runner.forEach((e) => {
+                e.kill();
+            });
+        }
+    },
+    Fork: function() {
+        // Make sure a project is open!
+        if ($gmedit["gml.Project"].current.version == 0) return;
+
+        // Fork runner and add it to process list!
+        Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
+    },
+    Clean: function() {
+        // Clean up anything from compile job!
+        for(let i = 1; i < 3; i++) $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + i].enabled = false;
+        if (Builder.Drive != "") Builder.RemoveDrive();
+        Builder.Output.Write(`Compile Ended: ${Builder.GetTime(new Date())}`);
+        Builder.Runner = [];
+        Builder.Drive = "";
+    },
+    Parse: function(string, type) {
+        // Parse error output!
+        let Contents = (string.toString()).split("\n");
+        for(let i = 0; i < Contents.length; i++) {
+            let Message = Contents[i];
+            switch (type) {
+                case 0: { // GMAssetCompiler.exe
+                    if (Message.slice(0, 8) == "Error : ") {
+                        Builder.Errors.push(Message.slice(8).trim());
+                        Builder.ErrorMet = true;
+                    } else if (Message.startsWith("Final Compile") == true && Builder.ErrorMet == true) {
+                        return 1;
+                    }
+                    break;
+                }
+
+                case 1: { // Runner.exe
+                    if (Builder.Preferences.displayLine == true && (Message.startsWith("ERROR!!! :: ") == true && Contents[i + 1].startsWith("FATAL ERROR") == true)) {
+                        for(let j = i + 1; j < Contents.length; j++) {
+                            if (Contents[j].startsWith("stack frame is") == true) {
+                                let Stack = Builder.ParseDescriptor(Contents[++j]);
+                                if ($gmedit["ui.OpenDeclaration"].openLocal(Stack.Asset, Stack.Line) == true) {
+                                    setTimeout(() => {
+                                        let Offset = 0;
+                                        if (Stack.Type == "Object") {
+                                            for(let Event = Builder.GetEvent(Stack.Event), k = 0; k < aceEditor.session.getLength(); k++) {
+                                                if (aceEditor.session.getLine(k).startsWith("#event " + Event) == true) {
+                                                    Offset = ++k;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        aceEditor.gotoLine(Stack.Line + Offset);
+                                    }, 10);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return 0;
+    },
+    ParseDescriptor: function(string) {
+        // Parse error descriptor and return object about it!
+        let Descriptor = {};
+        if (string.startsWith("gml_")) string = string.slice(4);
+        Descriptor.Type = string.slice(0, string.indexOf("_"));
+        string = string.slice(Descriptor.Type.length + 1);
+        Descriptor.Line = parseInt(string.slice(string.lastIndexOf("(") + 1, string.lastIndexOf(")")).replace("line", ""));
+        string = string.slice(0, string.lastIndexOf("(")).trim();
+        if (Descriptor.Type == "Object") {
+            Descriptor.Event = string.slice(string.lastIndexOf("_", string.lastIndexOf("_") - 1) + 1);
+            string = string.slice(0, (Descriptor.Event.length * -1) - 1);
+        }
+        Descriptor.Asset = string;
+        return Descriptor;
+    },
+    GetEvent: function(event) {
+        // Turn descriptor event into GMEdit event name! 
+        let SubEvent = event.slice(event.lastIndexOf("_") + 1), GmlEvent = $gmedit["parsers.GmlEvent"];
+        event = event.slice(0, event.lastIndexOf("_"));
+        for(let i = 0; i < GmlEvent.t2sc.length; i++) {
+            if (GmlEvent.t2sc[i] == event) {
+                return GmlEvent.i2s[i][SubEvent];
+            }
+        }
+        return "";
+    },
+    Display: function() {
+        // Display errors in new tab!
+        let GmlProject = $gmedit["gml.Project"].current, GmlFile = $gmedit["gml.file.GmlFile"], Output = new GmlFile(`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`); 
+        Output.Write = (e) => {Output.editor.session.setValue(Output.editor.session.getValue() + "\n" + e); }
+        for(let i = 0; i < Builder.Errors.length; i++) {
+            let Descriptor = Builder.ParseDescriptor(Builder.Errors[i].slice(0, Builder.Errors[i].indexOf(":")).trim()), ErrorText = Builder.Errors[i].slice(Builder.Errors[i].indexOf(":") + 1).trim(), ErrorLine = "";
+            if (GmlProject.yyResourceGUIDs[Descriptor.Asset] != undefined) {
+                let Path = GmlProject.yyResources[GmlProject.yyResourceGUIDs[Descriptor.Asset]].Value.resourcePath.slice(0, (3 + Descriptor.Asset.length) * -1), Location = GmlProject.dir + "/" + Path;
+                switch (Descriptor.Type) {
+                    case "Object": Location += Descriptor.Event; break;
+                    default: Location += Descriptor.Asset; break;
+                }
+                ErrorLine = $gmedit["electron.FileWrap"].readTextFileSync(Location + ".gml").split("\n")[Descriptor.Line].trim();
+            }
+            Output.Write(`// Error in ${Descriptor.Type[0].toLowerCase() + Descriptor.Type.slice(1)} at @[${Descriptor.Asset}${(Descriptor.Type == "Object" ? `(${Builder.GetEvent(Descriptor.Event)})` : "")}:${Descriptor.Line + 1}]:\n// ${ErrorText}\n${ErrorLine}\n`)
+        }
+        GmlFile.openTab(Output);
+    },
+    Spawn: function(runtime, output, name) {
+        // Spawn an instance of the runner!
+        let Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.win`]);
+        Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
-                default: gmout.write(e); break;
+                default: Builder.Output.Write(e, false);
             }
         });
-    });
-}
-
-Builder.Stop = function() {
-    let t = new Date(), cmd = require("child_process");
-    gmout.write(`${(Builder.Running == 1 ? "Compile" : (Builder.Running == 2 ? "Runner" : ""))} Stopped: ${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}\n`);
-    if (Builder.Compiler != undefined) (Builder.Platform == "win" ? cmd.execSync("taskkill /F /IM GMAssetCompiler.exe") : ""); Builder.Compiler = undefined;
-    if (Builder.Runner != undefined) Builder.Runner.kill(); Builder.Runner = undefined;
-    if (Builder.Platform == "win") {
-        cmd.exec("subst /d " + Builder.Drive + ":");
-        let vds = window.localStorage.getItem("builder:drives") || "";
-        window.localStorage.setItem("builder:drives", vds.slice(0, vds.indexOf(Builder.Drive)) + vds.slice(vds.indexOf(Builder.Drive) + 1));
-    }
-    for(var i = 0; i < 2; i++) $gmedit["ui.MainMenu"].menu.items[Builder.Index + 1 + i].enabled = false;
-    Builder.Running = 0;
-}
-
-Builder.Fork = function() {
-    if (Builder.RunArgs.length > 0) {
-        require("child_process").spawn(Builder.RunArgs[0], Builder.RunArgs[1].concat([Builder.Preferences.forkArguments])).stdout.on("data", (e) => {
-            switch (Builder.Parse(e, 1)) {
-                default: gmout.write((e.toString()).replace(new RegExp("\n", 'g'), "[FORK] - ")); break;
-            }
+        Runner.addListener("close", function(e) {
+            Builder.Runner.forEach((e, i) => {
+                if (this == e) {
+                    Builder.Runner[i] = undefined;
+                }
+            });
+            Builder.Runner = Builder.Runner.filter(e => e != undefined);
+            if (Builder.Runner.length == 0) Builder.Clean();
         });
-    }
-}
+        return Runner;
+    },
+    Sanitize: (value) => { return value.replace(/ /g, "_"); },
+    Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
+    GetTime: (t) => { return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}` },
+    RemoveDrive: () => { Builder.Output.Write(`Removing Virtual Drive: ${Builder.Drive}`); Builder.Command.execSync(`subst /d ${Builder.Drive}:`); window.localStorage["builder:drives"] = window.localStorage["builder:drives"].slice(0, window.localStorage["builder:drives"].indexOf(Builder.Drive)) + window.localStorage["builder:drives"].slice(window.localStorage["builder:drives"].indexOf(Builder.Drive) + 1); }
+});
