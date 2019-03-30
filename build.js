@@ -1,4 +1,5 @@
 Builder = Object.assign(Builder, {
+    Extension: (Builder.Platform == "win" ? "win" : "ios"),
     Command: require("child_process"),
     Compiler: undefined,
     Output: undefined,
@@ -35,7 +36,9 @@ Builder = Object.assign(Builder, {
             Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
             Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${process.env.LOCALAPPDATA}/GameMakerStudio2`) + "/GMS2TEMP";
         } else {
-
+            let User = JSON.parse(Electron_FS.readFileSync("Users/" + process.env.LOGNAME + "/.config/GameMakerStudio2/um.json"));
+            Userpath = `Users/${process.env.LOGNAME}/.config/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
+            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${(Temporary.endsWith("/T") ? Temporary.slice(0, -2) : Temporary)}/GameMakerStudio2`) + "/GMS2TEMP/";
         }
         if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);
         
@@ -92,9 +95,9 @@ Builder = Object.assign(Builder, {
 
         // Run the compiler!
         if (Builder.Platform == "win") {
-            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, ["/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, `/m=windows`, "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
+            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, ["/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, "/m=windows", "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
         } else {
-
+            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`, "/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, `/m=mac`, "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
         }
 
         // Capture compiler output!
@@ -108,7 +111,7 @@ Builder = Object.assign(Builder, {
         Builder.Compiler.on("close", (e) => {
             // Rename output file!
             if (Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
-            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.win`, `${Builder.Outpath}/${Builder.Name}.win`);
+            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
             Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
             Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
             $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + 2].enabled = true;
@@ -237,7 +240,12 @@ Builder = Object.assign(Builder, {
     },
     Spawn: function(runtime, output, name) {
         // Spawn an instance of the runner!
-        let Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.win`]);
+        let Runner = undefined;
+        if (Builder.Platform == "win") {
+            Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.${Builder.Extension}`]);
+        } else {
+            Runner = Builder.Command.spawn(`${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`, ["-game", `${output}/${name}.${Builder.Extension}`]);
+        }
         Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
                 default: Builder.Output.Write(e, false);
