@@ -29,7 +29,7 @@ Builder = Object.assign(Builder, {
         }
 
         // Find the temporary directory!
-        let Userpath = "", Temporary = require("os").tmpdir(), Name = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.indexOf(".yyp")); Builder.Name = Builder.Sanitize(Name);
+        let Userpath = "", Temporary = require("os").tmpdir(), Name = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.lastIndexOf(".")); Builder.Name = Builder.Sanitize(Name);
         Builder.Runtime = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
         if (Builder.Platform == "win") {
             let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
