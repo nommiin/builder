@@ -21,6 +21,16 @@ Builder = {
     LoadPreferences: function() {
         return Object.assign(this.Preferences, JSON.parse(Electron_FS.readFileSync(this.PreferencesPath)));
     },
+    LoadKeywords: function(path) {
+        Electron_FS.readdirSync(path).forEach((e) => {
+            let RuntimeStat = Electron_FS.statSync(path + "/" + e);
+            if (RuntimeStat.isDirectory() == true) {
+                if (Electron_FS.existsSync(path + "/" + e + "/fnames") == true) {
+                    $gmedit["parsers.GmlParseAPI"].loadStd(Electron_FS.readFileSync(path + "/" + e + "/fnames").toString(), {kind: GmlAPI.stdKind, doc: GmlAPI.stdDoc, comp: GmlAPI.stdComp })
+                }
+            }
+        });
+    },
     GetRuntimes: function(path) {
         let Runtimes = [];
         Electron_FS.readdirSync(path).forEach((e) => {
@@ -56,6 +66,7 @@ Builder = {
         if (this.Preferences.runtimeList.length <= 0) {
             Electron_Dialog.showMessageBox({type: "warning", message: "builder was unable to find any runtimes, please verify your runtime location and rescan."});
         }
+        Builder.LoadKeywords(this.Preferences.runtimeLocation + this.Preferences.runtimeSelection);
         return true;
     }
 };
@@ -173,7 +184,11 @@ Builder = {
         for(let i = 0; i < 3; i++) {
             MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
-        if ($gmedit["gml.Project"].current.version == 2) MainMenu.items[Builder.MenuIndex].enabled = true;
+        
+        if ($gmedit["gml.Project"].current.version == 2) {
+            MainMenu.items[Builder.MenuIndex].enabled = true;
+            Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
+        }
     });
 
     GMEdit.on("projectClose", function() {
