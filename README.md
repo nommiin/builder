@@ -4,6 +4,8 @@
 # about
 builder was made to make [GMEdit](https://yellowafterlife.itch.io/gmedit) usable without the need of having GameMaker Studio 2 open in the background to compile projects. builder works by using your pre-existing settings made by GMS 2 to pass arguments into GMAssetCompiler and compile your project. builder was developed with faster development in mind, skipping most file generation and secondary applications being required to compile. builder even supports switching the runtime that you build your project with as well as compiling the project as it's already running! You can download a pre-packaged version of builder from [here!](https://github.com/nommiin/builder/releases)
 
+If you found the plugin useful, consider donating to help support development on [itch.io!](https://nommiiin.itch.io/builder)
+
 # usage
 1. create a folder named "builder" inside of `%appdata%/AceGM/GMEdit/plugins/` on Windows, `/Users/<username>/Library/Application Support/AceGM/GMEdit/plugins` on macOS
 2. extract `main.js`, `build.js`, and `config.json` into aforementioned folder
