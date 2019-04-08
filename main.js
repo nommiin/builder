@@ -53,6 +53,9 @@ Builder = {
         if (Electron_FS.existsSync(this.PreferencesPath) == true) {
             try {
                 this.Preferences = this.LoadPreferences();
+                if (this.Preferences.runtimeSelection.trim() == "" && this.Preferences.runtimeList > 0) {
+                    this.Preferences.runtimeSelection = this.Preferences.runtimeList[0];   
+                }
             } catch(e) {
                 console.error("builder - Failed to read or parse preferences file.");
             }
