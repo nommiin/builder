@@ -28,6 +28,16 @@ Builder = Object.assign(Builder, {
             }
         }
 
+        // Close any runners if open
+        if (Builder.Preferences.stopCompile == true) {
+            if (Builder.Runner.length > 0) {
+                Builder.Runner.forEach((e) => {
+                    e.kill();
+                });
+            }
+            Builder.Runner = [];
+        }
+
         // Find the temporary directory!
         let Userpath = "", Temporary = require("os").tmpdir(), Name = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.lastIndexOf(".")); Builder.Name = Builder.Sanitize(Name);
         Builder.Runtime = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
@@ -36,8 +46,8 @@ Builder = Object.assign(Builder, {
             Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
             Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${process.env.LOCALAPPDATA}/GameMakerStudio2`) + "/GMS2TEMP";
         } else {
-            let User = JSON.parse(Electron_FS.readFileSync("Users/" + process.env.LOGNAME + "/.config/GameMakerStudio2/um.json"));
-            Userpath = `Users/${process.env.LOGNAME}/.config/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
+            let User = JSON.parse(Electron_FS.readFileSync("/Users/" + process.env.LOGNAME + "/.config/GameMakerStudio2/um.json"));
+            Userpath = `/Users/${process.env.LOGNAME}/.config/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
             Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${(Temporary.endsWith("/T") ? Temporary.slice(0, -2) : Temporary)}/GameMakerStudio2`) + "/GMS2TEMP/";
         }
         if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);

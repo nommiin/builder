@@ -1,7 +1,7 @@
 if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
 Builder = {
-    Version: "1.0",
+    Version: "1.1",
     MenuIndex: -1,
     Platform: require("os").type(),
     PreferencesPath: Electron_App.getPath("userData") + "/GMEdit/config/Builder-preferences.json",
@@ -9,6 +9,7 @@ Builder = {
     Preferences: {
         reuseTab: false,
         saveCompile: false,
+        stopCompile: false,
         displayLine: true,
         forkArguments: "-alt",
         runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
@@ -134,6 +135,7 @@ Builder = {
             Preferences.addInput(Builder.PreferencesElement, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(Builder.PreferencesElement, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(Builder.PreferencesElement, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(Builder.PreferencesElement, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(Builder.PreferencesElement, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
             Preferences.addButton(Builder.PreferencesElement, "Back", () => { Preferences.setMenu(Preferences.menuMain); Builder.SavePreferences(); });
             Preferences.addText(Builder.PreferencesElement, `builder v${Builder.Version} by nommiin`);
