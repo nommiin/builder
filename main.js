@@ -165,7 +165,14 @@ Builder = {
                 });
                 this.config = (this.configs.includes(window.localStorage.getItem(`config:${Project.current.path}`)) ? window.localStorage.getItem(`config:${Project.current.path}`) : "default");
                 window.localStorage.setItem(`config:${Project.current.path}`, this.config);  
-                let TreeView = $gmedit["ui.treeview.TreeView"], Configurations = TreeView.makeAssetDir("Configurations", "");
+                let TreeView = $gmedit["ui.treeview.TreeView"],  Configurations = undefined;
+                document.querySelectorAll(".dir").forEach((e) => {
+                    if (e.textContent == "Configs") {
+                        Configurations = e;
+                        return;
+                    }
+                });
+                Configurations = Configurations || TreeView.makeAssetDir("Configs", "");
                 this.configs.forEach((e) => {
                     let Configuration = TreeView.makeItem(e);
                     Configuration.addEventListener("dblclick", function() {
