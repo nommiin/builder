@@ -18,7 +18,6 @@ If you found the plugin useful, consider donating to help support development on
 * more compiler customization (worker threads, verbose output, etc)
 * in-editor progress bar, based on what GMAssetCompiler is doing
 * support GMS 1 projects? (unlikely)
-* refactor entirety of `build.js`, it's too messy!
 
 # help
 * **my game compiles but doesn't open:** make sure you are using the correct runtime, as the default runtime is likely to be the oldest runtime you have downloaded
