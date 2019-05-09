@@ -161,6 +161,7 @@ Builder = {
             let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
             Project.prototype.finishedIndexing = function(arguments) {
                 let Return = finishedIndexing.apply(this, arguments);
+                if (this.version != 2) return Return;
                 this.configs = ["default"];
                 JSON.parse(Electron_FS.readFileSync(Project.current.path)).configs.forEach((e) => {
                     e.split(";").forEach((e) => { if (this.configs.includes(e) == false) this.configs.push(e); });
