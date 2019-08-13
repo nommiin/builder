@@ -11,7 +11,7 @@ Builder = {
         saveCompile: false,
         stopCompile: false,
         displayLine: true,
-        forkArguments: "-alt",
+        forkArguments: "",
         runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
         runtimeSelection: "",
         runtimeList: []
