@@ -255,9 +255,9 @@ Builder = Object.assign(Builder, {
         // Spawn an instance of the runner!
         let Runner = undefined;
         if (Builder.Platform == "win") {
-            Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.${Builder.Extension}`]);
+            Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
         } else {
-            Runner = Builder.Command.spawn(`${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`, ["-game", `${output}/${name}.${Builder.Extension}`]);
+            Runner = Builder.Command.spawn(`${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
         }
         Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
