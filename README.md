@@ -26,4 +26,4 @@ If you found the plugin useful, consider donating to help support development on
 # thanks
 * [YellowAfterlife](https://twitter.com/YellowAfterlife) for accepting PRs that help the core functionality of this plugn and answering my endless questions
 * [Sidorakh](https://github.com/sidorakh/) for testing and supporting the plugin
-* [347_Jake](https://twitter.com/347_Jake) for encouraging me to add macOS support to the plugin
+* [Katie](https://twitter.com/347online) for encouraging me to add macOS support to the plugin
