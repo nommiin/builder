@@ -198,7 +198,7 @@ Builder = {
             MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
         
-        if (if ($gmedit["gml.Project"].current.version.config.projectMode == "gms2") {
+        if ($gmedit["gml.Project"].current.version.config.projectMode == "gms2") {
             MainMenu.items[Builder.MenuIndex].enabled = true;
             Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
         }
