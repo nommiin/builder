@@ -32,6 +32,17 @@ Builder = {
             }
         });
     },
+    ProjectVersion: function(project) {
+        // GMEdit seems to adjust the .version property to be a gml_GmlVersion class, check if it's an object or not to maintain backwards compatibility
+        if (typeof(project.version) == "object") {
+            switch (project.version.config.projectMode) {
+                case "gms2": return 2;
+                case "v1": return 1;
+            }
+            return -1;
+        }
+        return project.version;
+    },
     GetRuntimes: function(path) {
         let Runtimes = [];
         Electron_FS.readdirSync(path).forEach((e) => {
@@ -161,7 +172,7 @@ Builder = {
             let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
             Project.prototype.finishedIndexing = function(arguments) {
                 let Return = finishedIndexing.apply(this, arguments);
-                if (this.version != 2) return Return;
+                if (Builder.ProjectVersion(this) != 2) return Return;
                 this.configs = ["default"];
                 JSON.parse(Electron_FS.readFileSync(Project.current.path)).configs.forEach((e) => {
                     e.split(";").forEach((e) => { if (this.configs.includes(e) == false) this.configs.push(e); });
@@ -198,9 +209,7 @@ Builder = {
             MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
         
-        // GMEdit seems to adjust the .version property to be a gml_GmlVersion class, check if it's an object or not to maintain backwards compatibility
-        var _useNew = typeof($gmedit["gml.Project"].current.version) == "object";
-        if ((_useNew == false && $gmedit["gml.Project"].current.version == 2) || $gmedit["gml.Project"].current.version.config.projectMode == "gms2") {
+        if (Builder.ProjectVersion($gmedit["gml.Project"].current) == 2) {
             MainMenu.items[Builder.MenuIndex].enabled = true;
             Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
         }
