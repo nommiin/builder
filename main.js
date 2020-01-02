@@ -1,7 +1,7 @@
 if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
 Builder = {
-    Version: "1.1",
+    Version: "1.2",
     MenuIndex: -1,
     Platform: require("os").type(),
     PreferencesPath: Electron_App.getPath("userData") + "/GMEdit/config/Builder-preferences.json",
