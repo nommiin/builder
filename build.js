@@ -98,7 +98,7 @@ Builder = Object.assign(Builder, {
             while (Builder.Drive == "" || Drives.includes(Builder.Drive) == true) {
                 Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
             }
-            Builder.Command.execSync(`subst ${Builder.Drive}: ${Temporary}`);
+            Builder.Command.execSync(`subst ${Builder.Drive}: "${Temporary}"`);
             Builder.Output.Write("Using Virtual Drive: " + Builder.Drive);
             window.localStorage["builder:drives"] += Builder.Drive;
             Temporary = Builder.Drive + ":/";
