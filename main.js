@@ -198,7 +198,9 @@ Builder = {
             MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
         
-        if ($gmedit["gml.Project"].current.version.config.projectMode == "gms2") {
+        // GMEdit seems to adjust the .version property to be a gml_GmlVersion class, check if it's an object or not to maintain backwards compatibility
+        var _useNew = typeof($gmedit["gml.Project"].current.version) == "object";
+        if ((_useNew == false && $gmedit["gml.Project"].current.version == 2) || $gmedit["gml.Project"].current.version.config.projectMode == "gms2") {
             MainMenu.items[Builder.MenuIndex].enabled = true;
             Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
         }
