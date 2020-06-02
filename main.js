@@ -17,7 +17,9 @@ Builder = {
         runtimeList: []
     },
     SavePreferences: function() {
-        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences));
+        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences, (k, v) => {
+            return k == "runtimeList" ? undefined : v;
+        }, "    "));
     },
     LoadPreferences: function() {
         return Object.assign(this.Preferences, JSON.parse(Electron_FS.readFileSync(this.PreferencesPath)));
