@@ -205,19 +205,21 @@ Builder = {
 
     GMEdit.on("projectOpen", function() {
         let MainMenu = $gmedit["ui.MainMenu"].menu;
-        for(let i = 0; i < 3; i++) {
-            MainMenu.items[Builder.MenuIndex + i].enabled = false;
-        }
-        
-        if (Builder.ProjectVersion($gmedit["gml.Project"].current) == 2) {
-            MainMenu.items[Builder.MenuIndex].enabled = true;
-            Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
+        if (Builder.MenuIndex != -1) {
+            for(let i = 0; i < 3; i++) {
+                MainMenu.items[Builder.MenuIndex + i].enabled = false;
+            }
+            
+            if (Builder.ProjectVersion($gmedit["gml.Project"].current) == 2) {
+                MainMenu.items[Builder.MenuIndex].enabled = true;
+                Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
+            }
         }
     });
 
     GMEdit.on("projectClose", function() {
         let MainMenu = $gmedit["ui.MainMenu"].menu;
-        for(let i = 0; i < 3; i++) {
+        if (Builder.MenuIndex != -1) for(let i = 0; i < 3; i++) {
             MainMenu.items[Builder.MenuIndex + i].enabled = false;
         }
     });
