@@ -122,9 +122,9 @@ Builder = Object.assign(Builder, {
             }
         });
 
-        Builder.Compiler.on("close", (e) => {
+        Builder.Compiler.on("close", (exitCode) => {
             // Rename output file!
-            if (Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
+            if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
             Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
             Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
             Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
