@@ -133,8 +133,8 @@ Builder = Object.assign(Builder, {
         });
     },
     Stop: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Display errors and kill processes!
         if (Builder.ErrorMet == true) Builder.Display();
@@ -149,8 +149,8 @@ Builder = Object.assign(Builder, {
         }
     },
     Fork: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Fork runner and add it to process list!
         Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
