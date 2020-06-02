@@ -1,8 +1,8 @@
 if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
 Builder = {
-    Version: "1.2",
-    MenuIndex: -1,
+    Version: "1.23",
+    MenuItems: { list: [], run: null, stop: null, fork: null },
     Platform: require("os").type(),
     PreferencesPath: Electron_App.getPath("userData") + "/GMEdit/config/Builder-preferences.json",
     PreferencesElement: document.createElement("div"),
@@ -12,12 +12,24 @@ Builder = {
         stopCompile: false,
         displayLine: true,
         forkArguments: "",
-        runtimeLocation: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
-        runtimeSelection: "",
-        runtimeList: []
+        runtimeSettings: {
+            Stable: {
+                location: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
+                runtimeList: [],
+                selection: ""
+            },
+            Beta: {
+                location: process.env.ProgramData + "/GameMakerStudio2-Beta/Cache/runtimes/",
+                runtimeList: [],
+                selection: ""
+            }
+        }
     },
+    RuntimeSettings: null,
     SavePreferences: function() {
-        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences));
+        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences, (k, v) => {
+            return k == "runtimeList" ? undefined : v;
+        }, "    "));
     },
     LoadPreferences: function() {
         return Object.assign(this.Preferences, JSON.parse(Electron_FS.readFileSync(this.PreferencesPath)));
@@ -37,7 +49,7 @@ Builder = {
         if (typeof(project.version) == "object") {
             switch (project.version.config.projectMode) {
                 case "gms2": return 2;
-                case "v1": return 1;
+                case "gms1": return 1;
             }
             return -1;
         }
@@ -51,7 +63,25 @@ Builder = {
                 Runtimes.push(e);
             }
         });
+        Runtimes.sort((a, b) => a < b ? 1 : -1);
         return Runtimes;
+    },
+    InitalizeRuntimes: function(set, showWarning) {
+        // [Re-]gather list of runtimes
+        set.runtimeList = this.GetRuntimes(set.location);
+        
+        if (set.runtimeList.length <= 0) {
+            if (showWarning) Electron_Dialog.showMessageBox({
+                type: "warning",
+                message: `builder was unable to find any runtimes in ${set.location}, please verify your runtime location and rescan.`
+            });
+            set.selection = "";
+            return;
+        }
+        
+        if (set.selection.trim() == "" || !set.runtimeList.includes(set.selection)) {
+            set.selection = set.runtimeList[0];
+        }
     },
     Initalize: function() {
         // Check if platform is supported
@@ -65,8 +95,12 @@ Builder = {
         if (Electron_FS.existsSync(this.PreferencesPath) == true) {
             try {
                 this.Preferences = this.LoadPreferences();
-                if (this.Preferences.runtimeSelection.trim() == "" && this.Preferences.runtimeList > 0) {
-                    this.Preferences.runtimeSelection = this.Preferences.runtimeList[0];   
+                if (this.Preferences.runtimeLocation != null) { // migration
+                    this.Preferences.runtimeSettings.Stable.location = this.Preferences.runtimeLocation;
+                    delete this.Preferences.runtimeLocation;
+                    this.Preferences.runtimeSettings.Stable.selection = this.Preferences.runtimeSelection;
+                    delete this.Preferences.runtimeSelection;
+                    delete this.Preferences.runtimeList;
                 }
             } catch(e) {
                 console.error("builder - Failed to read or parse preferences file.");
@@ -74,14 +108,11 @@ Builder = {
         } else {
             this.SavePreferences();
         }
-        this.Preferences.runtimeList = [];
-
-        // Gather list of runtimes
-        this.Preferences.runtimeList = this.GetRuntimes(this.Preferences.runtimeLocation);
-        if (this.Preferences.runtimeList.length <= 0) {
-            Electron_Dialog.showMessageBox({type: "warning", message: "builder was unable to find any runtimes, please verify your runtime location and rescan."});
+        for (let [key, val] of Object.entries(this.Preferences.runtimeSettings)) {
+            this.InitalizeRuntimes(val, key == "Stable");
         }
-        Builder.LoadKeywords(this.Preferences.runtimeLocation + this.Preferences.runtimeSelection);
+        
+        Builder.LoadKeywords(this.Preferences.runtimeSettings.Stable.location + this.Preferences.runtimeSettings.Stable.selection);
         return true;
     }
 };
@@ -97,41 +128,88 @@ Builder = {
 
             // Create main menu items!
             let MainMenu = $gmedit["ui.MainMenu"].menu;
-            MainMenu.items.forEach((item, index) => {if (item.label.toLowerCase() == "close project") {
-                Builder.MenuIndex = ++index + 1;
-                MainMenu.insert(index, new Electron_MenuItem({type: "separator"}));
-                MainMenu.insert(++index, new Electron_MenuItem({label: "Run", accelerator: "F5", enabled: false, click: Builder.Run}));
-                MainMenu.insert(++index, new Electron_MenuItem({label: "Stop", accelerator: "F6", enabled: false, click: Builder.Stop}));
-                MainMenu.insert(++index, new Electron_MenuItem({label: "Fork", accelerator: "F7", enabled: false, click: Builder.Fork}));
-                return;
-            }});
+            for (let [index, mainMenuItem] of MainMenu.items.entries()) {
+                if (mainMenuItem.id != "close-project") continue;
+                Builder.MenuItems.list = [
+                    new Electron_MenuItem({
+                        id: "builder-sep",
+                        type: "separator"
+                    }),
+                    Builder.MenuItems.run = new Electron_MenuItem({
+                        id: "builder-run",
+                        label: "Run",
+                        accelerator: "F5",
+                        enabled: false,
+                        click: Builder.Run
+                    }),
+                    Builder.MenuItems.stop = new Electron_MenuItem({
+                        id: "builder-stop",
+                        label: "Stop",
+                        accelerator: "F6",
+                        enabled: false,
+                        click: Builder.Stop
+                    }),
+                    Builder.MenuItems.fork = new Electron_MenuItem({
+                        id: "builder-fork",
+                        label: "Fork",
+                        accelerator: "F7",
+                        enabled: false,
+                        click: Builder.Fork
+                    })
+                ];
+                for (let newItem of Builder.MenuItems.list) {
+                    MainMenu.insert(++index, newItem);
+                }
+                break;
+            }
+            if (Builder.MenuItems.run == null) return; // probably running in GMLive.js
 
             // Create preferences menu!
             let Preferences = $gmedit["ui.Preferences"];
-            Preferences.addText(Builder.PreferencesElement, "").innerHTML = "<b>Runtime Settings</b>";
-            Preferences.addInput(Builder.PreferencesElement, "Runtime Location", Builder.Preferences.runtimeLocation, (value) => { Builder.Preferences.runtimeLocation = value; Builder.SavePreferences(); });
-            Preferences.addButton(Builder.PreferencesElement, "Reset Location", () => { 
-                Builder.Preferences.runtimeLocation = process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/";
-                Builder.PreferencesElement.children[1].children[1].value = Builder.Preferences.runtimeLocation;
-                Builder.SavePreferences();
-            });
-            Preferences.addButton(Builder.PreferencesElement, "Rescan Runtimes", () => {
-                let Selection = Builder.PreferencesElement.children[4].children[1];
-                Selection.innerHTML = "";
-                Builder.Preferences.runtimeList = Builder.GetRuntimes(Builder.Preferences.runtimeLocation);
-                Builder.Preferences.runtimeList.forEach((e, i) => {
-                    let Option = document.createElement("option");
-                    Option.value = e;
-                    Option.innerHTML = Option.value;
-                    Selection.appendChild(Option);
+            for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
+                let runtimeGroup = Preferences.addGroup(Builder.PreferencesElement, `Runtime Settings (${key})`);
+                let element, label;
+                
+                element = Preferences.addInput(runtimeGroup, "Runtime Location", set.location, (value) => {
+                    set.location = value; Builder.SavePreferences();
                 });
-            });
-            Preferences.addDropdown(Builder.PreferencesElement, "Current Runtime", Builder.Preferences.runtimeSelection, Builder.Preferences.runtimeList, (value) => {
-                Builder.Preferences.runtimeSelection = value;
-                Builder.SavePreferences();
-            });
+                let runtimeLocationInput = element.querySelector("input");
+                label = element.querySelector("label");
+                label.appendChild(document.createTextNode(" ("));
+                label.appendChild(Preferences.createFuncAnchor("Reset", function() {
+                    switch (key) {
+                        case "Stable": set.location = process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"; break;
+                        case "Beta": set.location = process.env.ProgramData + "/GameMakerStudio2-Beta/Cache/runtimes/"; break;
+                        default: return;
+                    }
+                    runtimeLocationInput.value = set.location;
+                    Builder.SavePreferences();
+                }));
+                label.appendChild(document.createTextNode(")"));
+                
+                element = Preferences.addDropdown(runtimeGroup, "Current Runtime", set.selection, set.runtimeList, (value) => {
+                    set.selection = value;
+                    Builder.SavePreferences();
+                });
+                let runtimeListSelect = element.querySelector("select");
+                label = element.querySelector("label");
+                label.appendChild(document.createTextNode(" ("));
+                label.appendChild(Preferences.createFuncAnchor("Rescan", function() {
+                    runtimeListSelect.innerHTML = "";
+                    for (let rt of Builder.GetRuntimes(set.location)) {
+                        let option = document.createElement("option");
+                        option.innerHTML = option.value = rt;
+                        runtimeListSelect.appendChild(option);
+                    }
+                    runtimeListSelect.value = set.selection;
+                    Builder.SavePreferences();
+                }));
+                label.appendChild(document.createTextNode(")"));
+            }
+            
+            let settingsGroup = Preferences.addGroup(Builder.PreferencesElement, "Builder Settings");
             if (Builder.Platform =="win") {
-                Preferences.addButton(Builder.PreferencesElement, "Clean Virtual Drives", () => {
+                Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
                     let Command = require("child_process"), Drives = window.localStorage.getItem("builder:drives") || "";
                     for(let i = 0; i < Drives.length; i++) {
                         try {
@@ -142,22 +220,13 @@ Builder = {
                     Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: "Finished cleaning virtual drives."});
                 });
             }
-            Preferences.addText(Builder.PreferencesElement, "").innerHTML = "<b>Builder Settings</b>";
-            Preferences.addInput(Builder.PreferencesElement, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(Builder.PreferencesElement, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(Builder.PreferencesElement, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(Builder.PreferencesElement, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(Builder.PreferencesElement, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
+            Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(settingsGroup, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(settingsGroup, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(settingsGroup, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
             Preferences.addButton(Builder.PreferencesElement, "Back", () => { Preferences.setMenu(Preferences.menuMain); Builder.SavePreferences(); });
             Preferences.addText(Builder.PreferencesElement, `builder v${Builder.Version} by nommiin`);
-            let buildMain = Preferences.buildMain;
-            Preferences.buildMain = function(arguments) {
-                let Return = buildMain.apply(this, arguments);
-                Preferences.addButton(Return, "builder Settings", function() {
-                    Preferences.setMenu(Builder.PreferencesElement);
-                })
-                return Return;
-            }
 
             // Add ace commands!
             let AceCommands = $gmedit["ace.AceCommands"];
@@ -174,19 +243,32 @@ Builder = {
                 let Return = finishedIndexing.apply(this, arguments);
                 if (Builder.ProjectVersion(this) != 2) return Return;
                 this.configs = ["default"];
-                JSON.parse(Electron_FS.readFileSync(Project.current.path)).configs.forEach((e) => {
-                    e.split(";").forEach((e) => { if (this.configs.includes(e) == false) this.configs.push(e); });
-                });
+                let projectContent = Electron_FS.readFileSync(Project.current.path, "utf8");
+                if ($gmedit["yy.YyJson"].isExtJson(projectContent)) { // 2.3
+                    function addConfigRec(project, config) {
+                        if (!project.configs.includes(config.name)) project.configs.push(config.name);
+                        for (let childConfig of config.children) addConfigRec(project, childConfig);
+                    }
+                    addConfigRec(this, $gmedit["yy.YyJson"].parse(projectContent).configs);
+                } else { // 2.2
+                    for (let configData of JSON.parse(projectContent).configs) {
+                        for (let configName of configData.split(";")) {
+                            if (!this.configs.includes(configName)) this.configs.push(configName);
+                        }
+                    }
+                }
                 this.config = (this.configs.includes(window.localStorage.getItem(`config:${Project.current.path}`)) ? window.localStorage.getItem(`config:${Project.current.path}`) : "default");
                 window.localStorage.setItem(`config:${Project.current.path}`, this.config);  
-                let TreeView = $gmedit["ui.treeview.TreeView"],  Configurations = undefined;
-                document.querySelectorAll(".dir").forEach((e) => {
-                    if (e.textContent == "Configs") {
-                        Configurations = e;
-                        return;
+                let TreeView = $gmedit["ui.treeview.TreeView"];
+                let Configurations = undefined;
+                for (let dir of document.querySelectorAll(".dir")) {
+                    if (dir.textContent == "Configs") {
+                        Configurations = dir;
+                        break;
                     }
-                });
+                }
                 Configurations = Configurations || TreeView.makeAssetDir("Configs", "");
+                
                 this.configs.forEach((e) => {
                     let Configuration = TreeView.makeItem(e);
                     Configuration.addEventListener("dblclick", function() {
@@ -197,28 +279,37 @@ Builder = {
                     Configurations.treeItems.appendChild(Configuration);
                 });
                 TreeView.element.appendChild(Configurations);
+                
                 document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.config})`;
                 return Return;
             }
-        }
-    });
-
-    GMEdit.on("projectOpen", function() {
-        let MainMenu = $gmedit["ui.MainMenu"].menu;
-        for(let i = 0; i < 3; i++) {
-            MainMenu.items[Builder.MenuIndex + i].enabled = false;
-        }
+            
+            GMEdit.on("preferencesBuilt", (e) => {
+                Preferences.addButton(e.target, "builder Settings", () => {
+                    Preferences.setMenu(Builder.PreferencesElement);
+                });
+            });
         
-        if (Builder.ProjectVersion($gmedit["gml.Project"].current) == 2) {
-            MainMenu.items[Builder.MenuIndex].enabled = true;
-            Builder.LoadKeywords(Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection);
-        }
-    });
-
-    GMEdit.on("projectClose", function() {
-        let MainMenu = $gmedit["ui.MainMenu"].menu;
-        for(let i = 0; i < 3; i++) {
-            MainMenu.items[Builder.MenuIndex + i].enabled = false;
+            GMEdit.on("projectOpen", function() {
+                for (let item of Builder.MenuItems.list) item.enabled = false;
+                let project = $gmedit["gml.Project"].current;
+                if (Builder.ProjectVersion(project) == 2) {
+                    Builder.MenuItems.run.enabled = true;
+                    let runtime;
+                    if (project.version.name == "v23"
+                        && Builder.Preferences.runtimeSettings.Stable.selection < "runtime-2.3"
+                        && Builder.Preferences.runtimeSettings.Beta.selection != ""
+                    ) {
+                        runtime = Builder.Preferences.runtimeSettings.Beta;
+                    } else runtime = Builder.Preferences.runtimeSettings.Stable;
+                    Builder.RuntimeSettings = runtime;
+                    Builder.LoadKeywords(runtime.location + runtime.selection);
+                }
+            });
+        
+            GMEdit.on("projectClose", function() {
+                for (let item of Builder.MenuItems.list) item.enabled = false;
+            });
         }
     });
 })();

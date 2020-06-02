@@ -10,8 +10,9 @@ Builder = Object.assign(Builder, {
     Runtime: "",
     Drive: "",
     Run: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        var project = $gmedit["gml.Project"].current;
+        if (Builder.ProjectVersion(project) != 2) return;
 
         // Clear any past errors!
         Builder.Errors = [];
@@ -39,8 +40,8 @@ Builder = Object.assign(Builder, {
         }
 
         // Find the temporary directory!
-        let Userpath = "", Temporary = require("os").tmpdir(), Name = $gmedit["gml.Project"].current.name.slice(0, $gmedit["gml.Project"].current.name.lastIndexOf(".")); Builder.Name = Builder.Sanitize(Name);
-        Builder.Runtime = Builder.Preferences.runtimeLocation + Builder.Preferences.runtimeSelection;
+        let Userpath = "", Temporary = require("os").tmpdir();
+        Builder.Runtime = Builder.RuntimeSettings.location + Builder.RuntimeSettings.selection;
         if (Builder.Platform == "win") {
             let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
             Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
@@ -51,6 +52,9 @@ Builder = Object.assign(Builder, {
             Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${(Temporary.endsWith("/T") ? Temporary.slice(0, -2) : Temporary)}/GameMakerStudio2`) + "/GMS2TEMP/";
         }
         if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);
+        
+        let Name = project.name.slice(0, project.name.lastIndexOf("."));
+        Builder.Name = Builder.Sanitize(Name);
         
         // Create or reuse output tab!
         let Time = new Date(), Create = true;
@@ -90,7 +94,7 @@ Builder = Object.assign(Builder, {
             Builder.Stop();
             return;
         }
-        $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + 1].enabled = true;
+        Builder.MenuItems.stop.enabled = true;
 
         // Create substitute drive on Windows!
         if (Builder.Platform == "win") {
@@ -121,19 +125,19 @@ Builder = Object.assign(Builder, {
             }
         });
 
-        Builder.Compiler.on("close", (e) => {
+        Builder.Compiler.on("close", (exitCode) => {
             // Rename output file!
-            if (Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
+            if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
             Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
             Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
             Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
-            $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + 2].enabled = true;
+            Builder.MenuItems.fork.enabled = true;
             Builder.Compiler = undefined;
         });
     },
     Stop: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Display errors and kill processes!
         if (Builder.ErrorMet == true) Builder.Display();
@@ -148,15 +152,15 @@ Builder = Object.assign(Builder, {
         }
     },
     Fork: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Fork runner and add it to process list!
         Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
     },
     Clean: function() {
         // Clean up anything from compile job!
-        for(let i = 1; i < 3; i++) $gmedit["ui.MainMenu"].menu.items[Builder.MenuIndex + i].enabled = false;
+        for (let item of Builder.MenuItems.list) item.enabled = item == Builder.MenuItems.run;
         if (Builder.Drive != "") Builder.RemoveDrive();
         Builder.Output.Write(`Compile Ended: ${Builder.GetTime(new Date())}`);
         Builder.Runner = [];
@@ -235,21 +239,38 @@ Builder = Object.assign(Builder, {
     },
     Display: function() {
         // Display errors in new tab!
-        let GmlProject = $gmedit["gml.Project"].current, GmlFile = $gmedit["gml.file.GmlFile"], Output = new GmlFile(`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`); 
-        Output.Write = (e) => {Output.editor.session.setValue(Output.editor.session.getValue() + "\n" + e); }
-        for(let i = 0; i < Builder.Errors.length; i++) {
-            let Descriptor = Builder.ParseDescriptor(Builder.Errors[i].slice(0, Builder.Errors[i].indexOf(":")).trim()), ErrorText = Builder.Errors[i].slice(Builder.Errors[i].indexOf(":") + 1).trim(), ErrorLine = "";
-            if (GmlProject.yyResourceGUIDs[Descriptor.Asset] != undefined) {
-                let Path = GmlProject.yyResources[GmlProject.yyResourceGUIDs[Descriptor.Asset]].Value.resourcePath.slice(0, (3 + Descriptor.Asset.length) * -1), Location = GmlProject.dir + "/" + Path;
-                switch (Descriptor.Type) {
-                    case "Object": Location += Descriptor.Event; break;
-                    default: Location += Descriptor.Asset; break;
+        let project = $gmedit["gml.Project"].current;
+        let GmlFile = $gmedit["gml.file.GmlFile"];
+        let output = new GmlFile(`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`); 
+        output.Write = (e) => {output.editor.session.setValue(output.editor.session.getValue() + "\n" + e); }
+        for (let error of Builder.Errors) {
+            let colonPos = error.indexOf(":");
+            let descriptor = Builder.ParseDescriptor(error.slice(0, colonPos).trim());
+            let errorText = error.slice(colonPos + 1).trim();
+            let errorLine = "";
+            grabErrorLine: {
+                let resourceGUID = project.yyResourceGUIDs[descriptor.Asset];
+                if (resourceGUID == null) break grabErrorLine;
+                let resource = project.yyResources[resourceGUID];
+                if (resource == null) break grabErrorLine;
+                let resourcePath;
+                if (resource.Value) {
+                    resourcePath = resource.Value.resourcePath;
+                } else if (resource.id) {
+                    resourcePath = resource.id.path;
+                } else break grabErrorLine;
+                let path = resourcePath.slice(0, -(3 + descriptor.Asset.length));
+                switch (descriptor.Type) {
+                    case "Object": path += descriptor.Event; break;
+                    default: path += descriptor.Asset; break;
                 }
-                ErrorLine = $gmedit["electron.FileWrap"].readTextFileSync(Location + ".gml").split("\n")[Descriptor.Line].trim();
-            }
-            Output.Write(`// Error in ${Descriptor.Type[0].toLowerCase() + Descriptor.Type.slice(1)} at @[${Descriptor.Asset}${(Descriptor.Type == "Object" ? `(${Builder.GetEvent(Descriptor.Event)})` : "")}:${Descriptor.Line + 1}]:\n// ${ErrorText}\n${ErrorLine}\n`)
+                try {
+                    errorLine = project.readTextFileSync(path + ".gml").split("\n")[descriptor.Line].trim();
+                } catch (_) {}
+            };
+            output.Write(`// Error in ${descriptor.Type[0].toLowerCase() + descriptor.Type.slice(1)} at @[${descriptor.Asset}${(descriptor.Type == "Object" ? `(${Builder.GetEvent(descriptor.Event)})` : "")}:${descriptor.Line + 1}]:\n// ${errorText}\n${errorLine}\n`)
         }
-        GmlFile.openTab(Output);
+        GmlFile.openTab(output);
     },
     Spawn: function(runtime, output, name) {
         // Spawn an instance of the runner!
