@@ -63,6 +63,7 @@ Builder = {
                 Runtimes.push(e);
             }
         });
+        Runtimes.sort((a, b) => a < b ? 1 : -1);
         return Runtimes;
     },
     InitalizeRuntimes: function(set, showWarning) {
@@ -78,7 +79,6 @@ Builder = {
             return;
         }
         
-        set.runtimeList.sort((a, b) => a < b ? 1 : -1);
         if (set.selection.trim() == "" || !set.runtimeList.includes(set.selection)) {
             set.selection = set.runtimeList[0];
         }
@@ -197,11 +197,11 @@ Builder = {
                 label.appendChild(Preferences.createFuncAnchor("Rescan", function() {
                     runtimeListSelect.innerHTML = "";
                     for (let rt of Builder.GetRuntimes(set.location)) {
-                        let option = document.createElement(option);
+                        let option = document.createElement("option");
                         option.innerHTML = option.value = rt;
                         runtimeListSelect.appendChild(option);
                     }
-                    runtimeLocationInput.value = set.location;
+                    runtimeListSelect.value = set.selection;
                     Builder.SavePreferences();
                 }));
                 label.appendChild(document.createTextNode(")"));
