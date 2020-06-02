@@ -10,8 +10,9 @@ Builder = Object.assign(Builder, {
     Runtime: "",
     Drive: "",
     Run: function() {
-        // Make sure a project is open!
-        if ($gmedit["gml.Project"].current.version == 0) return;
+        // Make sure a GMS2 project is open!
+        var project = $gmedit["gml.Project"].current;
+        if (Builder.ProjectVersion(project) != 2) return;
 
         // Clear any past errors!
         Builder.Errors = [];
