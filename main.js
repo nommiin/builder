@@ -39,7 +39,7 @@ Builder = {
         if (typeof(project.version) == "object") {
             switch (project.version.config.projectMode) {
                 case "gms2": return 2;
-                case "v1": return 1;
+                case "gms1": return 1;
             }
             return -1;
         }
