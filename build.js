@@ -274,24 +274,24 @@ Builder = Object.assign(Builder, {
     },
     Spawn: function(runtime, output, name) {
         // Spawn an instance of the runner!
-        let Runner = undefined;
-        if (Builder.Platform == "win") {
-            Runner = Builder.Command.spawn(`${runtime}/windows/Runner.exe`, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
-        } else {
-            Runner = Builder.Command.spawn(`${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
-        }
+        let RunnerPath = (Builder.Platform == "win"
+            ? `${runtime}/windows/Runner.exe`
+            : `${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`
+        );
+        let Runner = Builder.Command.spawn(RunnerPath, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
         Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
                 default: Builder.Output.Write(e, false);
             }
         });
-        Runner.addListener("close", function(e) {
+        Runner.addListener("close", function(code) {
             Builder.Runner.forEach((e, i) => {
                 if (this == e) {
                     Builder.Runner[i] = undefined;
                 }
             });
             Builder.Runner = Builder.Runner.filter(e => e != undefined);
+            if (code != 0) Builder.Output.Write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
             if (Builder.Runner.length == 0) Builder.Clean();
         });
         return Runner;
