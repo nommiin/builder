@@ -57,12 +57,16 @@ Builder = {
     },
     GetRuntimes: function(path) {
         let Runtimes = [];
-        Electron_FS.readdirSync(path).forEach((e) => {
-            let RuntimeStat = Electron_FS.statSync(path + e);
-            if (RuntimeStat.isDirectory() == true) {
-                Runtimes.push(e);
-            }
-        });
+        try {
+            Electron_FS.readdirSync(path).forEach((e) => {
+                let RuntimeStat = Electron_FS.statSync(path + e);
+                if (RuntimeStat.isDirectory() == true) {
+                    Runtimes.push(e);
+                }
+            });
+        } catch (x) {
+            console.warn(`Failed to index ${path}:`, x);
+        }
         Runtimes.sort((a, b) => a < b ? 1 : -1);
         return Runtimes;
     },
@@ -289,8 +293,8 @@ Builder = {
                     Preferences.setMenu(Builder.PreferencesElement);
                 });
             });
-        
-            GMEdit.on("projectOpen", function() {
+            
+            function projectOpened() {
                 for (let item of Builder.MenuItems.list) item.enabled = false;
                 let project = $gmedit["gml.Project"].current;
                 if (Builder.ProjectVersion(project) == 2) {
@@ -305,11 +309,14 @@ Builder = {
                     Builder.RuntimeSettings = runtime;
                     Builder.LoadKeywords(runtime.location + runtime.selection);
                 }
-            });
+            }
+            GMEdit.on("projectOpen", projectOpened);
         
             GMEdit.on("projectClose", function() {
                 for (let item of Builder.MenuItems.list) item.enabled = false;
             });
+            
+            projectOpened();
         }
     });
 })();
