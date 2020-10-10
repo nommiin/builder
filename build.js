@@ -128,12 +128,32 @@ Builder = Object.assign(Builder, {
         }
         Builder.Outpath = Temporary + Name + "_" + Builder.Random();
         Builder.Output.Write("Using Output Path: " + Builder.Outpath);
+        Builder.Output.Write(""); // GMAC doesn't line-break at the start
 
         // Run the compiler!
+		let compilerArgs = [
+			`/c`,
+			`/zpex`,
+			`/j=4`,
+			`/gn=${Name}`,
+			`/td=${Temporary}`,
+			`/zpuf=${Userpath}`,
+			`/m=${Builder.Platform == "win" ? "windows" : "mac"}`,
+			`/tgt=64`,
+			`/nodnd`,
+			`/cfg=${$gmedit["gml.Project"].current.config}`,
+			`/o=${Builder.Outpath}`,
+			`/sh=True`,
+			`/cvm`,
+			`/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`,
+			`${$gmedit["gml.Project"].current.path}`,
+			`/v`,
+			`/bt=run`,
+		];
         if (Builder.Platform == "win") {
-            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, ["/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, "/m=windows", "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
+            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, compilerArgs);
         } else {
-            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`, "/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, `/m=mac`, "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
+            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`].concat(compilerArgs));
         }
 
         // Capture compiler output!
