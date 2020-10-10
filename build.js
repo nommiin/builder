@@ -11,8 +11,9 @@ Builder = Object.assign(Builder, {
     Drive: "",
     Run: function() {
         // Make sure a GMS2 project is open!
-        var project = $gmedit["gml.Project"].current;
+        let project = $gmedit["gml.Project"].current;
         if (Builder.ProjectVersion(project) != 2) return;
+        const isWindows = (Builder.Platform == "win");
 
         // Clear any past errors!
         Builder.Errors = [];
@@ -20,12 +21,9 @@ Builder = Object.assign(Builder, {
 
         // Save all edits if enabled!
         if (Builder.Preferences.saveCompile == true) {
-            let Changed = document.querySelectorAll(".chrome-tab-changed");
-            for(let i = 0; i < Changed.length; i++) {
-                let File = Changed[i].gmlFile;
-                if (File.__changed == true && File.path != null) {
-                    File.save();
-                }
+            for (let tab of document.querySelectorAll(".chrome-tab-changed")) {
+                let file = tab.gmlFile;
+                if (file && file.__changed && file.path != null) file.save();
             }
         }
 
@@ -40,7 +38,6 @@ Builder = Object.assign(Builder, {
         }
 
         // Find the temporary directory!
-        let Userpath = "", Temporary = require("os").tmpdir();
         let builderSettings = project.properties.builderSettings;
         let runtimeSelection;
         if (builderSettings && builderSettings.runtimeVersion) {
@@ -60,17 +57,51 @@ Builder = Object.assign(Builder, {
             runtimeSelection = Builder.RuntimeSettings.selection;
             Builder.Runtime = Builder.RuntimeSettings.location + runtimeSelection;
         }
-		//
-        if (Builder.Platform == "win") {
-            let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
-            Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
-            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${process.env.LOCALAPPDATA}/GameMakerStudio2`) + "/GMS2TEMP";
-        } else {
-            let User = JSON.parse(Electron_FS.readFileSync("/Users/" + process.env.LOGNAME + "/.config/GameMakerStudio2/um.json"));
-            Userpath = `/Users/${process.env.LOGNAME}/.config/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
-            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${(Temporary.endsWith("/T") ? Temporary.slice(0, -2) : Temporary)}/GameMakerStudio2`) + "/GMS2TEMP/";
+        //
+        let isBeta = runtimeSelection.startsWith("runtime-23.");
+        let appName = (isBeta ? "GameMakerStudio2-Beta" : "GameMakerStudio2");
+        let Userpath, Temporary; {
+            let appBase = (isWindows ? Electron_App.getPath("appData") : `/Users/${process.env.LOGNAME}/.config`);
+            let appDir = `${appBase}/${appName}/`;
+            if (!Electron_FS.existsSync(appDir)) Electron_FS.mkdirSync(appDir);
+            //
+            try {
+                let userData = JSON.parse(Electron_FS.readFileSync(`${appDir}/um.json`));
+                let username = userData.username;
+                // "you@domain.com" -> "you":
+                let usernameAtSign = username.indexOf("@");
+                if (usernameAtSign >= 0) username = username.slice(0, usernameAtSign);
+                //
+                Userpath = `${appDir}/${username}_${userData.userID}`;
+            } catch (x) {
+                $gmedit["electron.Dialog"].showError([
+                    "Failed to figure out your user path!",
+                    "Make sure you're logged in.",
+                    "Error: " + x
+                ].join("\n"));
+                return;
+            }
+            //
+            try {
+                let userSettings = JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`));
+                Temporary = userSettings["machine.General Settings.Paths.IDE.TempFolder"];
+            } catch (x) {
+                console.error("Failed to read temporary folder path, assuming default.", x);
+                Temporary = null;
+            }
+            if (!Temporary) { // figure out default location
+                if (isWindows) {
+                    Temporary = `${process.env.LOCALAPPDATA}/${appName}`;
+                } else {
+                    Temporary = require("os").tmpdir();
+                    if (Temporary.endsWith("/T")) Temporary = Temporary.slice(0, -2); // ?
+                }
+            }
+            // for an off-chance that your %LOCALAPPDATA%/GameMakerStudio2 directory doesn't exist
+            if (!Electron_FS.existsSync(Temporary)) Electron_FS.mkdirSync(Temporary);
+            Temporary += "/GMS2TEMP";
+            if (!Electron_FS.existsSync(Temporary)) Electron_FS.mkdirSync(Temporary);
         }
-        if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);
         
         let Name = project.name.slice(0, project.name.lastIndexOf("."));
         Builder.Name = Builder.Sanitize(Name);
