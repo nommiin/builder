@@ -41,7 +41,26 @@ Builder = Object.assign(Builder, {
 
         // Find the temporary directory!
         let Userpath = "", Temporary = require("os").tmpdir();
-        Builder.Runtime = Builder.RuntimeSettings.location + Builder.RuntimeSettings.selection;
+        let builderSettings = project.properties.builderSettings;
+        let runtimeSelection;
+        if (builderSettings && builderSettings.runtimeVersion) {
+            let found = false;
+            runtimeSelection = builderSettings.runtimeVersion;
+            for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
+                if (!set.runtimeList.includes(runtimeSelection)) continue;
+                Builder.Runtime = set.location + runtimeSelection;
+                found = true;
+                break;
+            }
+            if (!found) {
+                $gmedit["electron.Dialog"].showError(`Couldn't find runtime ${runtimeSelection} that is set in project properties!`);
+                return;
+            }
+        } else {
+            runtimeSelection = Builder.RuntimeSettings.selection;
+            Builder.Runtime = Builder.RuntimeSettings.location + runtimeSelection;
+        }
+		//
         if (Builder.Platform == "win") {
             let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
             Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.username.slice(0, User.username.indexOf("@")) + "_" + User.userID}`;
@@ -81,7 +100,7 @@ Builder = Object.assign(Builder, {
             }
             GmlFile.openTab(Builder.Output);
         }
-        Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${Builder.Preferences.runtimeSelection}`);
+        Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${runtimeSelection}`);
         Builder.Output.Write("Using Temporary Directory: " + Temporary);
 
         // Check for GMAssetCompiler and Runner files!

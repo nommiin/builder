@@ -294,6 +294,30 @@ Builder = {
                 });
             });
             
+            GMEdit.on("projectPropertiesBuilt", (e) => {
+                let project = e.project;
+                let group = Preferences.addGroup(e.target, "builder Settings");
+                const defaultVersion = "<default>";
+                //
+                let versions = [defaultVersion];
+                for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
+                    versions = versions.concat(set.runtimeList);
+                }
+                //
+                let json = project.properties.builderSettings;
+                let currVersion = json != null ? json.runtimeVersion : null;
+                if (currVersion == null) currVersion = defaultVersion;
+                Preferences.addDropdown(group, "Version override", currVersion, versions, (v) => {
+                    if (v == defaultVersion) v = null;
+                    let properties = project.properties;
+                    let json = properties.builderSettings;
+                    if (v == null && json == null) return;
+                    if (json == null) json = properties.builderSettings = {};
+                    json.runtimeVersion = v;
+                    $gmedit["ui.project.ProjectProperties"].save(project, properties);
+                });
+            });
+            
             function projectOpened() {
                 for (let item of Builder.MenuItems.list) item.enabled = false;
                 let project = $gmedit["gml.Project"].current;
