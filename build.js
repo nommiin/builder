@@ -148,14 +148,13 @@ Builder = Object.assign(Builder, {
 
         // Create substitute drive on Windows!
         if (Builder.Platform == "win") {
-            let Drives = Builder.Command.execSync("wmic logicaldisk get caption").toString().replace("Caption", "").split(":").map(c => c.trim());
-            while (Builder.Drive == "" || Drives.includes(Builder.Drive) == true) {
-                Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
+            let drive = Builder.AddDrive(Temporary);
+            if (drive == null) {
+                Builder.Output.Write(`!!! Could not find a free drive letter to use`)
+                return;
             }
-            Builder.Command.execSync(`subst ${Builder.Drive}: "${Temporary}"`);
-            Builder.Output.Write("Using Virtual Drive: " + Builder.Drive);
-            window.localStorage["builder:drives"] += Builder.Drive;
-            Temporary = Builder.Drive + ":/";
+            Builder.Drive = drive;
+            Temporary = drive + ":/";
         }
         Builder.Outpath = Temporary + Name + "_" + Builder.Random();
         Builder.Output.Write("Using Output Path: " + Builder.Outpath);
@@ -369,5 +368,52 @@ Builder = Object.assign(Builder, {
     Sanitize: (value) => { return value.replace(/ /g, "_"); },
     Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
     GetTime: (t) => { return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}` },
-    RemoveDrive: () => { Builder.Output.Write(`Removing Virtual Drive: ${Builder.Drive}`); Builder.Command.execSync(`subst /d ${Builder.Drive}:`); window.localStorage["builder:drives"] = window.localStorage["builder:drives"].slice(0, window.localStorage["builder:drives"].indexOf(Builder.Drive)) + window.localStorage["builder:drives"].slice(window.localStorage["builder:drives"].indexOf(Builder.Drive) + 1); }
+    DrivesFile: new $gmedit["electron.ConfigFile"]("session", "builder-drives"),
+    SessionsFile: new $gmedit["electron.ConfigFile"]("session", "builder-projects"),
+    AddDrive: (path) => {
+        let raw = Builder.Command.execSync("wmic logicaldisk get caption").toString();
+        let lines = raw.replace(/\r/g, "").split("\n");
+        let takenLetters = {};
+        for (let line of lines) {
+            let mt = /([A-Z]):/.exec(line);
+            if (mt) takenLetters[mt[1]] = true;
+        }
+        
+        let freeLetters = [];
+        for (let i = "A".charCodeAt(); i <= "Z".charCodeAt(); i++) {
+            let c = String.fromCharCode(i);
+            if (!takenLetters[c]) freeLetters.push(c);
+        }
+        //console.log("Candidate letters:", freeLetters);
+        if (freeLetters.length == 0) return null;
+        
+        let drive = freeLetters[0 | (Math.random() * freeLetters.length)];
+        try {
+            Builder.Command.execSync(`subst ${drive}: "${path}"`);
+        } catch (x) {
+            Builder.Output.Write(`Failed to subst ${drive}: `, x);
+            return null;
+        }
+        Builder.Output.Write(`Using Virtual Drive: ${drive}`);
+        
+        let conf = Builder.DrivesFile;
+        if (conf.sync()) conf.data = [];
+        conf.data.push(drive);
+        conf.flush();
+        
+        return drive;
+    },
+    RemoveDrive: () => {
+        let drive = Builder.Drive;
+        Builder.Output.Write(`Removing Virtual Drive: ${drive}`); 
+        Builder.Command.execSync(`subst /d ${drive}:`);
+        
+        let conf = Builder.DrivesFile;
+        if (conf.sync()) conf.data = [];
+        let ind = conf.data.indexOf(drive);
+        if (ind >= 0) {
+            conf.data.splice(ind, 1);
+            conf.flush();
+        }
+    }
 });

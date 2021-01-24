@@ -214,14 +214,19 @@ Builder = {
             let settingsGroup = Preferences.addGroup(Builder.PreferencesElement, "Builder Settings");
             if (Builder.Platform =="win") {
                 Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
-                    let Command = require("child_process"), Drives = window.localStorage.getItem("builder:drives") || "";
-                    for(let i = 0; i < Drives.length; i++) {
+                    let command = require("child_process");
+                    let conf = Builder.DrivesFile;
+                    if (conf.sync()) conf.data = [];
+                    let done = [];
+                    for (let c of conf.data) {
                         try {
-                            Command.execSync(`subst /d ${Drives[i]}:`);
+                            command.execSync(`subst /d ${c}:`);
+                            done.push(c);
                         } catch(e) {};
                     }
-                    window.localStorage.setItem("builder:drives", "");
-                    Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: "Finished cleaning virtual drives."});
+                    conf.data = [];
+                    conf.flush();
+                    Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: `Finished cleaning virtual drives (${done.join(", ")}).`});
                 });
             }
             Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
@@ -243,11 +248,11 @@ Builder = {
             
             // Hook into finishedIndexing
             let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
-            Project.prototype.finishedIndexing = function(arguments) {
-                let Return = finishedIndexing.apply(this, arguments);
-                if (Builder.ProjectVersion(this) != 2) return Return;
+            function onFinishedIndexing() {
+                if (Builder.ProjectVersion(this) != 2) return;
                 this.configs = ["default"];
-                let projectContent = Electron_FS.readFileSync(Project.current.path, "utf8");
+                let project = Project.current;
+                let projectContent = project.readTextFileSync(project.name);
                 if ($gmedit["yy.YyJson"].isExtJson(projectContent)) { // 2.3
                     function addConfigRec(project, config) {
                         if (!project.configs.includes(config.name)) project.configs.push(config.name);
@@ -261,8 +266,15 @@ Builder = {
                         }
                     }
                 }
-                this.config = (this.configs.includes(window.localStorage.getItem(`config:${Project.current.path}`)) ? window.localStorage.getItem(`config:${Project.current.path}`) : "default");
-                window.localStorage.setItem(`config:${Project.current.path}`, this.config);  
+                
+                let sf = Builder.SessionsFile;
+                if (sf.sync()) sf.data = {};
+                let path = project.path;
+                let pc = sf.data[path];
+                if (pc) pc.mtime = Date.now();
+                this.config = (pc && pc.config) || "default";
+                sf.flush();
+                
                 let TreeView = $gmedit["ui.treeview.TreeView"];
                 let Configurations = undefined;
                 for (let dir of document.querySelectorAll(".dir")) {
@@ -273,19 +285,36 @@ Builder = {
                 }
                 Configurations = Configurations || TreeView.makeAssetDir("Configs", "");
                 
-                this.configs.forEach((e) => {
-                    let Configuration = TreeView.makeItem(e);
+                this.configs.forEach((configName) => {
+                    let Configuration = TreeView.makeItem(configName);
                     Configuration.addEventListener("dblclick", function() {
-                        Project.current.config = this.innerText;
-                        window.localStorage.setItem(`config:${Project.current.path}`, Project.current.config);
-                        document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.innerText})`;
+                        Project.current.config = configName;
+                        //
+                        let sf = Builder.SessionsFile;
+                        if (sf.sync()) sf.data = {};
+                        let path = Project.current.path;
+                        let pc = sf.data[path];
+                        if (pc == null) pc = sf.data[path] = { };
+                        pc.config = configName;
+                        pc.mtime = Date.now();
+                        sf.flush();
+                        //
+                        document.getElementById("project-name").innerText = `${Project.current.displayName} (${configName})`;
                     });
                     Configurations.treeItems.appendChild(Configuration);
                 });
                 TreeView.element.appendChild(Configurations);
                 
                 document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.config})`;
-                return Return;
+            }
+            Project.prototype.finishedIndexing = function(arguments) {
+                let result = finishedIndexing.apply(this, arguments);
+                try {
+                    onFinishedIndexing.call(this);
+                } catch (x) {
+                    console.error(x);
+                }
+                return result;
             }
             
             GMEdit.on("preferencesBuilt", (e) => {
