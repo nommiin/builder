@@ -225,7 +225,7 @@ Builder = Object.assign(Builder, {
         if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Fork runner and add it to process list!
-        Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
+        Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name, true));
     },
     Clean: function() {
         // Clean up anything from compile job!
@@ -341,33 +341,37 @@ Builder = Object.assign(Builder, {
         }
         GmlFile.openTab(output);
     },
-    Spawn: function(runtime, output, name) {
+    Spawn: function(runtime, output, name, isFork) {
         // Spawn an instance of the runner!
-        let RunnerPath = (Builder.Platform == "win"
+        let runnerPath = (Builder.Platform == "win"
             ? `${runtime}/windows/Runner.exe`
             : `${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`
         );
-        let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
-            ?? Builder.Preferences.forkArguments;
-        let Runner = Builder.Command.spawn(RunnerPath, [
+        
+        let args = [
             "-game", `${output}/${name}.${Builder.Extension}`
-        ].concat(forkArguments.split(" ")));
-        Runner.stdout.on("data", (e) => {
+        ];
+        if (isFork) {
+            let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
+                ?? Builder.Preferences.forkArguments;
+            args = args.concat(forkArguments.split(" "));
+        }
+        
+        let runner = Builder.Command.spawn(runnerPath, args);
+        runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
                 default: Builder.Output.Write(e, false);
             }
         });
-        Runner.addListener("close", function(code) {
-            Builder.Runner.forEach((e, i) => {
-                if (this == e) {
-                    Builder.Runner[i] = undefined;
-                }
-            });
-            Builder.Runner = Builder.Runner.filter(e => e != undefined);
+        runner.addListener("close", function(code) {
+            let runners = Builder.Runner;
+            let i = runners.indexOf(this);
+            if (i >= 0) runners.splice(i, 1);
+            
             if (code != 0) Builder.Output.Write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
-            if (Builder.Runner.length == 0) Builder.Clean();
+            if (runners.length == 0) Builder.Clean();
         });
-        return Runner;
+        return runner;
     },
     Sanitize: (value) => { return value.replace(/ /g, "_"); },
     Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
