@@ -229,12 +229,30 @@ Builder = {
                     Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: `Finished cleaning virtual drives (${done.join(", ")}).`});
                 });
             }
-            Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
-            Preferences.addButton(Builder.PreferencesElement, "Back", () => { Preferences.setMenu(Preferences.menuMain); Builder.SavePreferences(); });
+            Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => {
+                Builder.Preferences.forkArguments = value;
+                Builder.SavePreferences();
+            });
+            Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => {
+                Builder.Preferences.reuseTab = value;
+                Builder.SavePreferences();
+            });
+            Preferences.addCheckbox(settingsGroup, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => {
+                Builder.Preferences.saveCompile = value;
+                Builder.SavePreferences();
+            });
+            Preferences.addCheckbox(settingsGroup, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => {
+                Builder.Preferences.stopCompile = value;
+                Builder.SavePreferences();
+            });
+            Preferences.addCheckbox(settingsGroup, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => {
+                Builder.Preferences.displayLine = value;
+                Builder.SavePreferences();
+            });
+            Preferences.addButton(Builder.PreferencesElement, "Back", () => {
+                Preferences.setMenu(Preferences.menuMain);
+                Builder.SavePreferences();
+            });
             Preferences.addText(Builder.PreferencesElement, `builder v${Builder.Version} by nommiin`);
 
             // Add ace commands!
@@ -334,17 +352,36 @@ Builder = {
                 }
                 //
                 let json = project.properties.builderSettings;
-                let currVersion = json != null ? json.runtimeVersion : null;
-                if (currVersion == null) currVersion = defaultVersion;
-                Preferences.addDropdown(group, "Version override", currVersion, versions, (v) => {
-                    if (v == defaultVersion) v = null;
+                let ensureJSON = (isDefault) => {
                     let properties = project.properties;
-                    let json = properties.builderSettings;
-                    if (v == null && json == null) return;
+                    let json = properties;
+                    if (isDefault && json == null) return null;
                     if (json == null) json = properties.builderSettings = {};
+                    return json;
+                };
+                Preferences.addDropdown(group,
+                    "Version override",
+                    json?.runtimeVersion ?? defaultVersion,
+                    versions,
+                (v) => {
+                    if (v == defaultVersion) v = null;
+                    let json = ensureJSON(v == null);
+                    if (json == null) return;
                     json.runtimeVersion = v;
-                    $gmedit["ui.project.ProjectProperties"].save(project, properties);
+                    $gmedit["ui.project.ProjectProperties"].save(project, project.properties);
                 });
+                //
+                let argsField = Preferences.addInput(group,
+                    "Fork arguments override",
+                    json?.forkArguments ?? "",
+                (v) => {
+                    if (v == "") v = null;
+                    let json = ensureJSON(v == null);
+                    if (json == null) return;
+                    json.forkArguments = v;
+                    $gmedit["ui.project.ProjectProperties"].save(project, project.properties);
+                }).querySelector("input");
+                argsField.placeholder = Builder.Preferences.forkArguments;
             });
             
             function projectOpened() {

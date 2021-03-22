@@ -40,7 +40,7 @@ Builder = Object.assign(Builder, {
         // Find the temporary directory!
         let builderSettings = project.properties.builderSettings;
         let runtimeSelection;
-        if (builderSettings && builderSettings.runtimeVersion) {
+        if (builderSettings?.runtimeVersion) {
             let found = false;
             runtimeSelection = builderSettings.runtimeVersion;
             for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
@@ -347,7 +347,11 @@ Builder = Object.assign(Builder, {
             ? `${runtime}/windows/Runner.exe`
             : `${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`
         );
-        let Runner = Builder.Command.spawn(RunnerPath, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
+        let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
+            ?? Builder.Preferences.forkArguments;
+        let Runner = Builder.Command.spawn(RunnerPath, [
+            "-game", `${output}/${name}.${Builder.Extension}`
+        ].concat(forkArguments.split(" ")));
         Runner.stdout.on("data", (e) => {
             switch (Builder.Parse(e, 1)) {
                 default: Builder.Output.Write(e, false);
