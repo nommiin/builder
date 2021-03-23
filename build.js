@@ -20,7 +20,7 @@ Builder = Object.assign(Builder, {
         Builder.ErrorMet = false;
 
         // Save all edits if enabled!
-        if (Builder.Preferences.saveCompile == true) {
+        if (BuilderPreferences.current.saveCompile == true) {
             for (let tab of document.querySelectorAll(".chrome-tab-changed")) {
                 let file = tab.gmlFile;
                 if (file && file.__changed && file.path != null) file.save();
@@ -28,7 +28,7 @@ Builder = Object.assign(Builder, {
         }
 
         // Close any runners if open
-        if (Builder.Preferences.stopCompile == true) {
+        if (BuilderPreferences.current.stopCompile == true) {
             if (Builder.Runner.length > 0) {
                 Builder.Runner.forEach((e) => {
                     e.kill();
@@ -43,7 +43,7 @@ Builder = Object.assign(Builder, {
         if (builderSettings?.runtimeVersion) {
             let found = false;
             runtimeSelection = builderSettings.runtimeVersion;
-            for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
+            for (let [_, set] of Object.entries(BuilderPreferences.current.runtimeSettings)) {
                 if (!set.runtimeList.includes(runtimeSelection)) continue;
                 Builder.Runtime = set.location + runtimeSelection;
                 found = true;
@@ -108,7 +108,7 @@ Builder = Object.assign(Builder, {
         
         // Create or reuse output tab!
         let Time = new Date(), Create = true;
-        if (Builder.Preferences.reuseTab == true) {
+        if (BuilderPreferences.current.reuseTab == true) {
            document.querySelectorAll(".chrome-tab").forEach((e) => {
                 if (e.gmlFile.output != undefined || e.gmlFile.output == true) {
                     $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
@@ -252,7 +252,7 @@ Builder = Object.assign(Builder, {
                 }
 
                 case 1: { // Runner.exe
-                    if (Builder.Preferences.displayLine == true && (Message.startsWith("ERROR!!! :: ") == true && Contents[i + 1].startsWith("FATAL ERROR") == true)) {
+                    if (BuilderPreferences.current.displayLine == true && (Message.startsWith("ERROR!!! :: ") == true && Contents[i + 1].startsWith("FATAL ERROR") == true)) {
                         for(let j = i + 1; j < Contents.length; j++) {
                             if (Contents[j].startsWith("stack frame is") == true) {
                                 let Stack = Builder.ParseDescriptor(Contents[++j]);
@@ -353,7 +353,7 @@ Builder = Object.assign(Builder, {
         ];
         if (isFork) {
             let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
-                ?? Builder.Preferences.forkArguments;
+                ?? BuilderPreferences.current.forkArguments;
             args = args.concat(forkArguments.split(" "));
         }
         

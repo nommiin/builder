@@ -1,4 +1,9 @@
 {
     "name": "builder",
-    "scripts": ["main.js", "build.js"]
+    "scripts": [
+        "main.js",
+        "build.js",
+        "BuilderPreferences.js",
+        "BuilderProjectProperties.js"
+    ]
 }
