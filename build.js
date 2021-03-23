@@ -38,10 +38,9 @@ Builder = Object.assign(Builder, {
     Clean: function() {
         // Clean up anything from compile job!
         for (let item of Builder.MenuItems.list) item.enabled = item == Builder.MenuItems.run;
-        if (Builder.Drive != "") Builder.RemoveDrive();
+        BuilderDrives.removeCurrent();
         Builder.Output.Write(`Compile Ended: ${Builder.GetTime(new Date())}`);
         Builder.Runner = [];
-        Builder.Drive = "";
     },
     Parse: function(string, type) {
         // Parse error output!
@@ -184,52 +183,5 @@ Builder = Object.assign(Builder, {
     Sanitize: (value) => { return value.replace(/ /g, "_"); },
     Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
     GetTime: (t) => { return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}` },
-    DrivesFile: new $gmedit["electron.ConfigFile"]("session", "builder-drives"),
     SessionsFile: new $gmedit["electron.ConfigFile"]("session", "builder-projects"),
-    AddDrive: (path) => {
-        let raw = Builder.Command.execSync("wmic logicaldisk get caption").toString();
-        let lines = raw.replace(/\r/g, "").split("\n");
-        let takenLetters = {};
-        for (let line of lines) {
-            let mt = /([A-Z]):/.exec(line);
-            if (mt) takenLetters[mt[1]] = true;
-        }
-        
-        let freeLetters = [];
-        for (let i = "A".charCodeAt(); i <= "Z".charCodeAt(); i++) {
-            let c = String.fromCharCode(i);
-            if (!takenLetters[c]) freeLetters.push(c);
-        }
-        //console.log("Candidate letters:", freeLetters);
-        if (freeLetters.length == 0) return null;
-        
-        let drive = freeLetters[0 | (Math.random() * freeLetters.length)];
-        try {
-            Builder.Command.execSync(`subst ${drive}: "${path}"`);
-        } catch (x) {
-            Builder.Output.Write(`Failed to subst ${drive}: `, x);
-            return null;
-        }
-        Builder.Output.Write(`Using Virtual Drive: ${drive}`);
-        
-        let conf = Builder.DrivesFile;
-        if (conf.sync()) conf.data = [];
-        conf.data.push(drive);
-        conf.flush();
-        
-        return drive;
-    },
-    RemoveDrive: () => {
-        let drive = Builder.Drive;
-        Builder.Output.Write(`Removing Virtual Drive: ${drive}`); 
-        Builder.Command.execSync(`subst /d ${drive}:`);
-        
-        let conf = Builder.DrivesFile;
-        if (conf.sync()) conf.data = [];
-        let ind = conf.data.indexOf(drive);
-        if (ind >= 0) {
-            conf.data.splice(ind, 1);
-            conf.flush();
-        }
-    }
 });

@@ -5,6 +5,7 @@
         "build.js",
         "BuilderPreferences.js",
         "BuilderProjectProperties.js",
-        "BuilderCompile.js"
+        "BuilderCompile.js",
+        "BuilderDrives.js"
     ]
 }

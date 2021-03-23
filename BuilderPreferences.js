@@ -102,19 +102,7 @@ class BuilderPreferences {
 		let settingsGroup = Preferences.addGroup(root, "Builder Settings");
 		if (Builder.Platform =="win") {
 			Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
-				let command = require("child_process");
-				let conf = Builder.DrivesFile;
-				if (conf.sync()) conf.data = [];
-				let done = [];
-				for (let c of conf.data) {
-					try {
-						command.execSync(`subst /d ${c}:`);
-						done.push(c);
-					} catch(e) {};
-				}
-				conf.data = [];
-				conf.flush();
-				Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: `Finished cleaning virtual drives (${done.join(", ")}).`});
+				BuilderDrives.clean();
 			});
 		}
 		Preferences.addInput(settingsGroup, "Fork Arguments", this.current.forkArguments, (value) => {

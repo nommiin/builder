@@ -138,7 +138,7 @@ class BuilderCompile {
 
         // Create substitute drive on Windows!
         if (Builder.Platform == "win") {
-            let drive = Builder.AddDrive(Temporary);
+            let drive = BuilderDrives.add(Temporary);
             if (drive == null) {
                 Builder.Output.Write(`!!! Could not find a free drive letter to use`)
                 return;
