@@ -2,7 +2,6 @@ Builder = Object.assign(Builder, {
     Extension: (Builder.Platform.includes("Windows") == true ? "win" : "ios"),
     Command: require("child_process"),
     Compiler: undefined,
-    Output: undefined,
     ErrorMet: false,
     Runner: [],
     Errors: [],
@@ -39,7 +38,7 @@ Builder = Object.assign(Builder, {
         // Clean up anything from compile job!
         for (let item of Builder.MenuItems.list) item.enabled = item == Builder.MenuItems.run;
         BuilderDrives.removeCurrent();
-        Builder.Output.Write(`Compile Ended: ${Builder.GetTime(new Date())}`);
+        BuilderOutput.main.write(`Compile Ended: ${Builder.GetTime()}`);
         Builder.Runner = [];
     },
     Parse: function(string, type) {
@@ -148,7 +147,7 @@ Builder = Object.assign(Builder, {
         }
         GmlFile.openTab(output);
     },
-    Spawn: function(runtime, output, name, isFork) {
+    Spawn: function(runtime, outputPath, name, isFork) {
         // Spawn an instance of the runner!
         let runnerPath = (Builder.Platform == "win"
             ? `${runtime}/windows/Runner.exe`
@@ -156,7 +155,7 @@ Builder = Object.assign(Builder, {
         );
         
         let args = [
-            "-game", `${output}/${name}.${Builder.Extension}`
+            "-game", `${outputPath}/${name}.${Builder.Extension}`
         ];
         if (isFork) {
             let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
@@ -164,10 +163,13 @@ Builder = Object.assign(Builder, {
             args = args.concat(forkArguments.split(" "));
         }
         
+        let output = BuilderOutput.open(isFork);
+        output.write(`Running ${[runnerPath].concat(args).join(" ")}...\n`);
         let runner = Builder.Command.spawn(runnerPath, args);
         runner.stdout.on("data", (e) => {
-            switch (Builder.Parse(e, 1)) {
-                default: Builder.Output.Write(e, false);
+            let text = e.toString();
+            switch (Builder.Parse(text, 1)) {
+                default: output.write(text, false);
             }
         });
         runner.addListener("close", function(code) {
@@ -175,13 +177,16 @@ Builder = Object.assign(Builder, {
             let i = runners.indexOf(this);
             if (i >= 0) runners.splice(i, 1);
             
-            if (code != 0) Builder.Output.Write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
+            if (code != 0) output.write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
             if (runners.length == 0) Builder.Clean();
         });
         return runner;
     },
     Sanitize: (value) => { return value.replace(/ /g, "_"); },
     Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
-    GetTime: (t) => { return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}` },
+    GetTime: (t) => {
+        if (t == null) t = new Date();
+        return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`
+    },
     SessionsFile: new $gmedit["electron.ConfigFile"]("session", "builder-projects"),
 });

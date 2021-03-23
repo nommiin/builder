@@ -97,40 +97,17 @@ class BuilderCompile {
         Builder.Name = Builder.Sanitize(Name);
         
         // Create or reuse output tab!
-        let Time = new Date(), Create = true;
-        if (BuilderPreferences.current.reuseTab == true) {
-           document.querySelectorAll(".chrome-tab").forEach((e) => {
-                if (e.gmlFile.output != undefined || e.gmlFile.output == true) {
-                    $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
-                    e.childNodes.forEach((e) => { if (e.className == "chrome-tab-title") e.innerText = `Output (${Builder.GetTime(Time)})`; })
-                    e.gmlFile.editor.session.setValue("");
-                    Builder.Output = e.gmlFile;
-                    Create = false;
-                }
-            });
-        }
-        if (Create == true) {
-            let GmlFile = $gmedit["gml.file.GmlFile"];
-            Builder.Output = new GmlFile(`Output (${Builder.GetTime(Time)})`, null, $gmedit["file.kind.misc.KPlain"].inst, "");
-            Builder.Output.output = true;
-            Builder.Output.Write = function(e, n=true) {
-                this.editor.session.setValue(this.editor.session.getValue() + (n ? "\n" : "") + e);
-                if (aceEditor.session.gmlFile == this) {
-                    aceEditor.gotoLine(aceEditor.session.getLength());
-                }
-            }
-            GmlFile.openTab(Builder.Output);
-        }
-        Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${runtimeSelection}`);
-        Builder.Output.Write("Using Temporary Directory: " + Temporary);
+		let output = BuilderOutput.open(false);
+		output.clear(`Compile Started: ${Builder.GetTime()}\nUsing Runtime: ${runtimeSelection}`);
+        output.write("Using Temporary Directory: " + Temporary);
 
         // Check for GMAssetCompiler and Runner files!
         if (Electron_FS.existsSync(`${Builder.Runtime}/bin/GMAssetCompiler.exe`) == false) {
-            Builder.Output.Write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
+            output.write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
             Builder.Stop();
             return;
         } else if (Electron_FS.existsSync(`${Builder.Runtime}/${Builder.Platform == "win" ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
-            Builder.Output.Write(`!!! Could not find ${Builder.Platform == "win" ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${Builder.Platform == "win" ? "windows/" : "mac/"}`);
+            output.write(`!!! Could not find ${Builder.Platform == "win" ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${Builder.Platform == "win" ? "windows/" : "mac/"}`);
             Builder.Stop();
             return;
         }
@@ -140,15 +117,15 @@ class BuilderCompile {
         if (Builder.Platform == "win") {
             let drive = BuilderDrives.add(Temporary);
             if (drive == null) {
-                Builder.Output.Write(`!!! Could not find a free drive letter to use`)
+                output.write(`!!! Could not find a free drive letter to use`)
                 return;
             }
             Builder.Drive = drive;
             Temporary = drive + ":/";
         }
         Builder.Outpath = Temporary + Name + "_" + Builder.Random();
-        Builder.Output.Write("Using Output Path: " + Builder.Outpath);
-        Builder.Output.Write(""); // GMAC doesn't line-break at the start
+        output.write("Using output path: " + Builder.Outpath);
+        output.write(""); // GMAC doesn't line-break at the start
 
         // Run the compiler!
 		let compilerArgs = [
@@ -178,9 +155,10 @@ class BuilderCompile {
 
         // Capture compiler output!
         Builder.Compiler.stdout.on("data", (e) => {
-            switch (Builder.Parse(e, 0)) {
+			let text = e.toString();
+            switch (Builder.Parse(text, 0)) {
                 case 1: Builder.Stop();
-                default: Builder.Output.Write(e, false);
+                default: output.write(text, false);
             }
         });
 

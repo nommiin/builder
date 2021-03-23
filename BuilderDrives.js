@@ -22,10 +22,10 @@ class BuilderDrives {
 		try {
 			Builder.Command.execSync(`subst ${drive}: "${path}"`);
 		} catch (x) {
-			Builder.Output.Write(`Failed to subst ${drive}: `, x);
+			BuilderOutput.main.write(`Failed to subst ${drive}: `, x);
 			return null;
 		}
-		Builder.Output.Write(`Using Virtual Drive: ${drive}`);
+		BuilderOutput.main.write(`Using Virtual Drive: ${drive}`);
 		
 		let conf = this.file;
 		if (conf.sync()) conf.data = [];
@@ -37,7 +37,7 @@ class BuilderDrives {
 	
 	static remove() {
 		let drive = Builder.Drive;
-		Builder.Output.Write(`Removing Virtual Drive: ${drive}`); 
+		BuilderOutput.main.write(`Removing Virtual Drive: ${drive}`); 
 		Builder.Command.execSync(`subst /d ${drive}:`);
 		
 		let conf = this.file;

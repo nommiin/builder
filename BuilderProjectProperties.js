@@ -1,7 +1,7 @@
 class BuilderProjectProperties {
 	static build(project, target) {
 		const Preferences = $gmedit["ui.Preferences"];
-		let group = Preferences.addGroup(e.target, "builder Settings");
+		let group = Preferences.addGroup(target, "builder Settings");
 		const defaultVersion = "<default>";
 		
 		//

@@ -7,6 +7,7 @@ class BuilderPreferences {
 		stopCompile: false,
 		displayLine: true,
 		forkArguments: "",
+		forkInSideView: false,
 		runtimeSettings: {
 			Stable: {
 				location: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
@@ -28,7 +29,7 @@ class BuilderPreferences {
 	}
 	
 	static load() {
-		this.current = JSON.parse(Electron_FS.readFileSync(this.path))
+		Object.assign(this.current, JSON.parse(Electron_FS.readFileSync(this.path)));
 	}
 	
 	static init() {
@@ -107,6 +108,10 @@ class BuilderPreferences {
 		}
 		Preferences.addInput(settingsGroup, "Fork Arguments", this.current.forkArguments, (value) => {
 			this.current.forkArguments = value;
+			this.save();
+		});
+		Preferences.addCheckbox(settingsGroup, "Show Fork Aside", this.current.forkInSideView, (value) => {
+			this.current.forkInSideView = value;
 			this.save();
 		});
 		Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", this.current.reuseTab, (value) => {

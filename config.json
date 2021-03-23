@@ -6,6 +6,8 @@
         "BuilderPreferences.js",
         "BuilderProjectProperties.js",
         "BuilderCompile.js",
-        "BuilderDrives.js"
+        "BuilderDrives.js",
+        "BuilderOutput.js",
+        "BuilderOutputAside.js"
     ]
 }
