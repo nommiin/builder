@@ -4,6 +4,7 @@
         "main.js",
         "build.js",
         "BuilderPreferences.js",
-        "BuilderProjectProperties.js"
+        "BuilderProjectProperties.js",
+        "BuilderCompile.js"
     ]
 }
