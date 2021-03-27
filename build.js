@@ -165,7 +165,9 @@ Builder = Object.assign(Builder, {
         
         let output = BuilderOutput.open(isFork);
         output.write(`Running ${[runnerPath].concat(args).join(" ")}...\n`);
-        let runner = Builder.Command.spawn(runnerPath, args);
+        let runner = Builder.Command.spawn(runnerPath, args, {
+            cwd: outputPath
+        });
         runner.stdout.on("data", (e) => {
             let text = e.toString();
             switch (Builder.Parse(text, 1)) {
