@@ -22,6 +22,8 @@ class BuilderOutputAside {
 	
 	static editorID = "builder_fork";
 	
+	static clearOnNextOpen = false;
+	
 	static prepare() {
 		this.container = document.createElement("div");
 		this.container.classList.add("ace_container");
@@ -92,6 +94,11 @@ class BuilderOutputAside {
 				this.parent.appendChild(this.container);
 			} else this.prepare();
 			this.emitResize();
+		} else {
+			if (this.clearOnNextOpen) {
+				this.clearOnNextOpen = false;
+				this.output.clear();
+			}
 		}
 		this.output = output;
 		this.aceSession = GMEdit.aceTools.cloneSession(output.aceSession);
