@@ -50,6 +50,7 @@ class BuilderCompile {
         //
         let isBeta = runtimeSelection.startsWith("runtime-23.");
         let appName = (isBeta ? "GameMakerStudio2-Beta" : "GameMakerStudio2");
+        let steamworksPath = null;
         let Userpath, Temporary; {
             let appBase = (isWindows ? Electron_App.getPath("appData") : `/Users/${process.env.LOGNAME}/.config`);
             let appDir = `${appBase}/${appName}/`;
@@ -75,6 +76,7 @@ class BuilderCompile {
             try {
                 let userSettings = JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`));
                 Temporary = userSettings["machine.General Settings.Paths.IDE.TempFolder"];
+                steamworksPath = userSettings["machine.Platform Settings.Steam.steamsdk_path"];
             } catch (x) {
                 console.error("Failed to read temporary folder path, assuming default.", x);
                 Temporary = null;
@@ -163,10 +165,26 @@ class BuilderCompile {
         });
 
         Builder.Compiler.on("close", (exitCode) => {
-            // Rename output file!
             if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
-            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
-            Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
+            
+            // Rename output file!
+            if (Name != Builder.Name) {
+                Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
+                Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
+            }
+            
+            // Copy Steam API binary if needed:
+            if (Electron_FS.existsSync(`${Builder.Outpath}/steam_appid.txt`) && steamworksPath) try {
+                if (Builder.Platform == "win") {
+                    Electron_FS.copyFileSync(`${steamworksPath}/redistributable_bin/steam_api.dll`, `${Builder.Outpath}/steam_api.dll`);
+                } else {
+                    // note: not tested at all
+                    Electron_FS.copyFileSync(`${steamworksPath}/redistributable_bin/osx32/libsteam_api.dylib`, `${Builder.Outpath}/libsteam_api.dylib`);
+                }
+            } catch (x) {
+                console.error("Failed to copy steam_api:", x);
+            }
+            
             BuilderOutputAside.clearOnNextOpen = true;
             Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
             Builder.MenuItems.fork.enabled = true;

@@ -157,6 +157,9 @@ Builder = Object.assign(Builder, {
         let args = [
             "-game", `${outputPath}/${name}.${Builder.Extension}`
         ];
+        if (Electron_FS.existsSync(`${outputPath}/steam_appid.txt`)) {
+            args.push("-debug_steamapi");
+        }
         if (isFork) {
             let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
                 ?? BuilderPreferences.current.forkArguments;
