@@ -7,7 +7,7 @@ class BuilderProjectProperties {
 		//
 		let ensureJSON = (isDefault) => {
 			let properties = project.properties;
-			let json = properties;
+			let json = properties.builderSettings;
 			if (isDefault && json == null) return null;
 			if (json == null) json = properties.builderSettings = {};
 			return json;
