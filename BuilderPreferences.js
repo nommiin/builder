@@ -8,6 +8,7 @@ class BuilderPreferences {
 		displayLine: true,
 		forkArguments: "",
 		forkInSideView: false,
+		showRunAndFork: false,
 		runtimeSettings: {
 			Stable: {
 				location: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
@@ -106,6 +107,11 @@ class BuilderPreferences {
 				BuilderDrives.clean();
 			});
 		}
+		Preferences.addCheckbox(settingsGroup, 'Show "Run & Fork" in main menu', this.current.showRunAndFork, (value) => {
+			this.current.showRunAndFork = value;
+			Builder.MenuItems.runAndFork.visible = value;
+			this.save();
+		});
 		Preferences.addInput(settingsGroup, "Fork Arguments", this.current.forkArguments, (value) => {
 			this.current.forkArguments = value;
 			this.save();

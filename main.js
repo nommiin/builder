@@ -79,6 +79,40 @@ Builder = {
 };
 
 (function() {
+    function initCommands() {
+        const commands = [{
+            name: "builder-run",
+            title: "builder: Compile and run",
+            bindKey: "F5",
+            exec: () => Builder.Run(),
+        }, {
+            name: "builder-run-and-fork",
+            title: "builder: Compile and run two instances",
+            bindKey: { win: "ctrl-F5", mac: "cmd-F5" },
+            exec: () => Builder.Run(true),
+        }, {
+            name: "builder-stop",
+            title: "builder: Stop compiler or runner process",
+            bindKey: "F6",
+            exec: Builder.Stop,
+        }, {
+            name: "builder-fork",
+            title: "builder: Fork instance of runner",
+            bindKey: "F7",
+            exec: Builder.Fork,
+        }];
+        
+        let hashHandler = $gmedit["ui.KeyboardShortcuts"].hashHandler;
+        let AceCommands = $gmedit["ace.AceCommands"];
+        for (let cmd of commands) {
+            hashHandler.addCommand(cmd);
+            AceCommands.add(cmd);
+            AceCommands.addToPalette({
+                name: cmd.title,
+                exec: cmd.name,
+            })
+        }
+    }
     GMEdit.register("builder", {
         init: function() {
             // Initalize Builder!
@@ -101,7 +135,15 @@ Builder = {
                         label: "Run",
                         accelerator: "F5",
                         enabled: false,
-                        click: Builder.Run
+                        click: () => Builder.Run()
+                    }),
+                    Builder.MenuItems.runAndFork = new Electron_MenuItem({
+                       id: "builder-run-and-fork",
+                       label: "Run and Fork",
+                       accelerator: "Ctrl+F5",
+                       enabled: false,
+                       visible: BuilderPreferences.current.showRunAndFork,
+                       click: () => Builder.Run(true)
                     }),
                     Builder.MenuItems.stop = new Electron_MenuItem({
                         id: "builder-stop",
@@ -129,13 +171,7 @@ Builder = {
             BuilderProjectProperties.ready();
             
             // Add ace commands!
-            let AceCommands = $gmedit["ace.AceCommands"];
-            AceCommands.add({ name: "run", bindKey: {win: "F5", mac: "F5"}, exec: Builder.Run }, "Run");
-            AceCommands.addToPalette({name: "builder: Compile and run your project", exec: "run", title: "Run"});
-            AceCommands.add({ name: "stop", bindKey: {win: "F6", mac: "F6"}, exec: Builder.Stop }, "Stop");
-            AceCommands.addToPalette({name: "builder: Stop compiler or runner process", exec: "stop", title: "Stop"});
-            AceCommands.add({ name: "fork", bindKey: {win: "F7", mac: "F7"}, exec: Builder.Fork }, "Fork");
-            AceCommands.addToPalette({name: "builder: Fork instance of runner", exec: "fork", title: "Fork"});
+            initCommands();
             
             // Hook into finishedIndexing
             let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
@@ -213,6 +249,7 @@ Builder = {
                 let project = $gmedit["gml.Project"].current;
                 if (Builder.ProjectVersion(project) == 2) {
                     Builder.MenuItems.run.enabled = true;
+                    Builder.MenuItems.runAndFork.enabled = true;
                     let runtime;
                     const pref = BuilderPreferences.current;
                     if (project.version.name == "v23"

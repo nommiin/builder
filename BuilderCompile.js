@@ -1,5 +1,5 @@
 class BuilderCompile {
-	static run() {
+	static run(autoRunFork) {
 		// Make sure a GMS2 project is open!
         let project = $gmedit["gml.Project"].current;
         if (Builder.ProjectVersion(project) != 2) return;
@@ -188,6 +188,7 @@ class BuilderCompile {
             BuilderOutputAside.clearOnNextOpen = true;
             Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
             Builder.MenuItems.fork.enabled = true;
+            if (autoRunFork) Builder.Fork();
             Builder.Compiler = undefined;
         });
 	}

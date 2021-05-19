@@ -8,8 +8,8 @@ Builder = Object.assign(Builder, {
     Outpath: "",
     Runtime: "",
     Drive: "",
-    Run: function() {
-        BuilderCompile.run();
+    Run: function(fork) {
+        BuilderCompile.run(fork);
     },
     Stop: function() {
         // Make sure a GMS2 project is open!
@@ -36,7 +36,9 @@ Builder = Object.assign(Builder, {
     },
     Clean: function() {
         // Clean up anything from compile job!
-        for (let item of Builder.MenuItems.list) item.enabled = item == Builder.MenuItems.run;
+        for (let item of Builder.MenuItems.list) {
+            item.enabled = item.id.includes("-run");
+        }
         BuilderDrives.removeCurrent();
         BuilderOutput.main.write(`Compile Ended: ${Builder.GetTime()}`);
         Builder.Runner = [];
