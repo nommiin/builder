@@ -163,6 +163,13 @@ class BuilderCompile {
                 default: output.write(text, false);
             }
         });
+        Builder.Compiler.stderr.on("data", (e) => {
+			let text = e.toString();
+            switch (Builder.Parse(text, 0)) {
+                case 1: Builder.Stop();
+                default: output.write(text, false);
+            }
+        });
 
         Builder.Compiler.on("close", (exitCode) => {
             if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
