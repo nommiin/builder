@@ -114,7 +114,7 @@ Builder = {
         }
     }
     GMEdit.register("builder", {
-        init: function() {
+        init: function(config) {
             // Initalize Builder!
             if (Builder.Initalize() == false) {
                 console.error("builder - Failed to initalize.");
@@ -134,6 +134,7 @@ Builder = {
                         id: "builder-run",
                         label: "Run",
                         accelerator: "F5",
+						icon: config.dir + "/icons/run.png",
                         enabled: false,
                         click: () => Builder.Run()
                     }),
@@ -141,6 +142,7 @@ Builder = {
                        id: "builder-run-and-fork",
                        label: "Run and Fork",
                        accelerator: "Ctrl+F5",
+					   icon: config.dir + "/icons/run-and-fork.png",
                        enabled: false,
                        visible: BuilderPreferences.current.showRunAndFork,
                        click: () => Builder.Run(true)
@@ -149,6 +151,7 @@ Builder = {
                         id: "builder-stop",
                         label: "Stop",
                         accelerator: "F6",
+						icon: config.dir + "/icons/stop.png",
                         enabled: false,
                         click: Builder.Stop
                     }),
@@ -156,6 +159,7 @@ Builder = {
                         id: "builder-fork",
                         label: "Fork",
                         accelerator: "F7",
+						icon: config.dir + "/icons/fork.png",
                         enabled: false,
                         click: Builder.Fork
                     })
