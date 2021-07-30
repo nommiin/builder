@@ -14,6 +14,7 @@ class BuilderProjectProperties {
 		};
 		
 		let json = project.properties.builderSettings;
+		const ProjectProperties = $gmedit["ui.project.ProjectProperties"];
 		
 		//
 		let versions = [defaultVersion];
@@ -30,7 +31,7 @@ class BuilderProjectProperties {
 			let json = ensureJSON(v == null);
 			if (json == null) return;
 			json.runtimeVersion = v;
-			$gmedit["ui.project.ProjectProperties"].save(project, project.properties);
+			ProjectProperties.save(project, project.properties);
 		});
 		
 		//
@@ -42,9 +43,23 @@ class BuilderProjectProperties {
 			let json = ensureJSON(v == null);
 			if (json == null) return;
 			json.forkArguments = v;
-			$gmedit["ui.project.ProjectProperties"].save(project, project.properties);
+			ProjectProperties.save(project, project.properties);
 		}).querySelector("input");
 		argsField.placeholder = BuilderPreferences.current.forkArguments;
+		
+		//
+		let steamAppIdEl = Preferences.addInput(group,
+			"Steam App ID override",
+			json?.steamAppID ?? "",
+		(v) => {
+			v = parseInt(v);
+			if (isNaN(v)) v = null;
+			let json = ensureJSON(v == null);
+			if (json == null) return;
+			json.steamAppID = v;
+			ProjectProperties.save(project, project.properties);
+		});
+		steamAppIdEl.querySelector("input").placeholder = "0 to disable, blank to auto-detect";
 	}
 	
 	static ready() {

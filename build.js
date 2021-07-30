@@ -155,16 +155,18 @@ Builder = Object.assign(Builder, {
             ? `${runtime}/windows/Runner.exe`
             : `${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`
         );
+        let builderSettings = $gmedit["gml.Project"].current.properties.builderSettings;
         
         let args = [
             "-game", `${outputPath}/${name}.${Builder.Extension}`
         ];
-        if (Electron_FS.existsSync(`${outputPath}/steam_appid.txt`)) {
+        if (builderSettings?.steamAppID != null) {
+            if (builderSettings?.steamAppID != 0) args.push("-debug_steamapi");
+        } else if (Electron_FS.existsSync(`${outputPath}/steam_appid.txt`)) {
             args.push("-debug_steamapi");
         }
         if (isFork) {
-            let forkArguments = $gmedit["gml.Project"].current.properties.builderSettings?.forkArguments
-                ?? BuilderPreferences.current.forkArguments;
+            let forkArguments = builderSettings?.forkArguments ?? BuilderPreferences.current.forkArguments;
             args = args.concat(forkArguments.split(" "));
         }
         
