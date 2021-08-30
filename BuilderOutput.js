@@ -66,7 +66,7 @@ class BuilderOutput {
 		if (lookFor && reuseTab)
 		for (let tab of document.querySelectorAll(".chrome-tab")) {
 			if (tab.gmlFile == lookFor.gmlFile) {
-				tab.querySelector(".chrome-tab-title").innerText = title;
+				tab.querySelector(".chrome-tab-title-text").innerText = title;
 				if (forkAside) {
 					BuilderOutputAside.show(lookFor);
 				} else tab.click();
