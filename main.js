@@ -6,14 +6,38 @@ Builder = {
     Platform: require("os").type(),
     RuntimeSettings: null,
     LoadKeywords: function(path) {
-        Electron_FS.readdirSync(path).forEach((e) => {
-            let RuntimeStat = Electron_FS.statSync(path + "/" + e);
-            if (RuntimeStat.isDirectory() == true) {
-                if (Electron_FS.existsSync(path + "/" + e + "/fnames") == true) {
-                    $gmedit["parsers.GmlParseAPI"].loadStd(Electron_FS.readFileSync(path + "/" + e + "/fnames").toString(), {kind: GmlAPI.stdKind, doc: GmlAPI.stdDoc, comp: GmlAPI.stdComp })
+        const custBase = $gmedit["electron.FileWrap"].userPath + "/api/" + GmlAPI.version.getName();
+        const GmlAPILoader = $gmedit["gml.GmlAPILoader"];
+        const GmlParseAPI = $gmedit["parsers.GmlParseAPI"];
+        const getText = (path) => {
+            if (Electron_FS.existsSync(path)) {
+                try {
+                    return Electron_FS.readFileSync(path, "utf8")
+                } catch (x) {
+                    console.error(x);
+                    return null;
                 }
+            } else return null;
+        }
+        for (let platform of Electron_FS.readdirSync(path)) {
+            let platformPath = `${path}/${platform}`;
+            if (!Electron_FS.statSync(platformPath).isDirectory()) continue;
+            let fnamesPath = platformPath + "/fnames";
+            if (!Electron_FS.existsSync(fnamesPath)) continue;
+            let apiText = Electron_FS.readFileSync(fnamesPath, "utf8");
+            //
+            let custDir = custBase + "/" + platform;
+            if (Electron_FS.existsSync(custDir)) {
+                let replText = getText(custDir + "/replace.gml");
+                if (replText) apiText = GmlAPILoader.applyPatchFile(apiText, replText);
+                //
+                let extraText = getText(custDir + "/extra.gml");
+                if (extraText) apiText += "\n" + extraText;
             }
-        });
+            //
+            let args = GmlAPILoader.getArgs();
+            GmlParseAPI.loadStd(apiText, args);
+        }
     },
     ProjectVersion: function(project) {
         // GMEdit seems to adjust the .version property to be a gml_GmlVersion class, check if it's an object or not to maintain backwards compatibility
