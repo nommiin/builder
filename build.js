@@ -61,7 +61,10 @@ Builder = Object.assign(Builder, {
         if (Builder.Preferences.reuseTab == true) {
            document.querySelectorAll(".chrome-tab").forEach((e) => {
                 if (e.gmlFile.output != undefined || e.gmlFile.output == true) {
-                    $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
+                    //Check for Preference of opening existing tab on compile
+                    if (Builder.Preferences.openOutputTabOnCompile == true) {
+                        $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
+                    }
                     e.childNodes.forEach((e) => { if (e.className == "chrome-tab-title") e.innerText = `Output (${Builder.GetTime(Time)})`; })
                     e.gmlFile.editor.session.setValue("");
                     Builder.Output = e.gmlFile;
@@ -78,7 +81,10 @@ Builder = Object.assign(Builder, {
                 if (aceEditor.session.gmlFile == this) {
                     aceEditor.gotoLine(aceEditor.session.getLength());
                 }
+
             }
+            
+            //If creating new output tab, always open it
             GmlFile.openTab(Builder.Output);
         }
         Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${Builder.Preferences.runtimeSelection}`);
