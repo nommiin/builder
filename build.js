@@ -187,7 +187,7 @@ Builder = Object.assign(Builder, {
             let i = runners.indexOf(this);
             if (i >= 0) runners.splice(i, 1);
             
-            if (code != 0) output.write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
+            if (code != 0 && code != null) output.write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
             if (runners.length == 0) Builder.Clean();
         });
         return runner;
