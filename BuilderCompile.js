@@ -123,6 +123,7 @@ class BuilderCompile {
                 return;
             }
             Builder.Drive = drive;
+            Builder.Drives.push(drive);
             Temporary = drive + ":/";
         }
         Builder.Outpath = Temporary + Name + "_" + Builder.Random();

@@ -8,6 +8,7 @@ Builder = Object.assign(Builder, {
     Outpath: "",
     Runtime: "",
     Drive: "",
+    Drives: [],
     Run: function(fork) {
         BuilderCompile.run(fork);
     },

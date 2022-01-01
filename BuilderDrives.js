@@ -35,8 +35,9 @@ class BuilderDrives {
 		return drive;
 	}
 	
-	static remove() {
-		let drive = Builder.Drive;
+	static remove(drive) {
+		drive ??= Builder.Drive;
+		if (drive == null) return;
 		BuilderOutput.main.write(`Removing Virtual Drive: ${drive}`); 
 		Builder.Command.execSync(`subst /d ${drive}:`);
 		
@@ -50,10 +51,11 @@ class BuilderDrives {
 	}
 	
 	static removeCurrent() {
-		if (Builder.Drive != "") {
-			this.remove(Builder.Drive);
-			Builder.Drive = "";
+		for (let drive of Builder.Drives) {
+			this.remove(drive);
 		}
+		Builder.Drives.length = 0;
+		Builder.Drive = "";
 	}
 	
 	static clean() {
