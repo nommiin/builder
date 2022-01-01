@@ -108,15 +108,15 @@ class BuilderCompile {
             output.write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
             Builder.Stop();
             return;
-        } else if (Electron_FS.existsSync(`${Builder.Runtime}/${Builder.Platform == "win" ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
-            output.write(`!!! Could not find ${Builder.Platform == "win" ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${Builder.Platform == "win" ? "windows/" : "mac/"}`);
+        } else if (Electron_FS.existsSync(`${Builder.Runtime}/${isWindows ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
+            output.write(`!!! Could not find ${isWindows ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${isWindows ? "windows/" : "mac/"}`);
             Builder.Stop();
             return;
         }
         Builder.MenuItems.stop.enabled = true;
 
         // Create substitute drive on Windows!
-        if (Builder.Platform == "win") {
+        if (isWindows && BuilderPreferences.current.useVirtualDrives) {
             let drive = BuilderDrives.add(Temporary);
             if (drive == null) {
                 output.write(`!!! Could not find a free drive letter to use`)
@@ -138,7 +138,7 @@ class BuilderCompile {
 			`/gn=${Name}`,
 			`/td=${Temporary}`,
 			`/zpuf=${Userpath}`,
-			`/m=${Builder.Platform == "win" ? "windows" : "mac"}`,
+			`/m=${isWindows? "windows" : "mac"}`,
 			`/tgt=64`,
 			`/nodnd`,
 			`/cfg=${$gmedit["gml.Project"].current.config}`,
@@ -150,7 +150,7 @@ class BuilderCompile {
 			`/v`,
 			`/bt=run`,
 		];
-        if (Builder.Platform == "win") {
+        if (isWindows) {
             Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, compilerArgs);
         } else {
             Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`].concat(compilerArgs));
@@ -183,7 +183,7 @@ class BuilderCompile {
             
             // Copy Steam API binary if needed:
             if (Electron_FS.existsSync(`${Builder.Outpath}/steam_appid.txt`) && steamworksPath) try {
-                if (Builder.Platform == "win") {
+                if (isWindows) {
                     Electron_FS.copyFileSync(`${steamworksPath}/redistributable_bin/steam_api.dll`, `${Builder.Outpath}/steam_api.dll`);
                 } else {
                     // note: not tested at all

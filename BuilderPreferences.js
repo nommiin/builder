@@ -9,6 +9,7 @@ class BuilderPreferences {
 		forkArguments: "",
 		forkInSideView: false,
 		showRunAndFork: false,
+		useVirtualDrives: false,
 		runtimeSettings: {
 			Stable: {
 				location: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
@@ -102,7 +103,11 @@ class BuilderPreferences {
 		}
 		
 		let settingsGroup = Preferences.addGroup(root, "Builder Settings");
-		if (Builder.Platform =="win") {
+		if (Builder.Platform == "win") {
+			Preferences.addCheckbox(settingsGroup, 'Use Virtual Drives', this.current.useVirtualDrives, (value) => {
+				this.current.useVirtualDrives = value;
+				this.save();
+			});
 			Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
 				BuilderDrives.clean();
 			});
