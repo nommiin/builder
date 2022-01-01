@@ -125,6 +125,8 @@ class BuilderCompile {
             Builder.Drive = drive;
             Builder.Drives.push(drive);
             Temporary = drive + ":/";
+        } else if (!Temporary.endsWith("/") && !Temporary.endsWith("\\")) {
+            Temporary += "/";
         }
         Builder.Outpath = Temporary + Name + "_" + Builder.Random();
         output.write("Using output path: " + Builder.Outpath);
