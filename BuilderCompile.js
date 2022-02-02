@@ -58,7 +58,7 @@ class BuilderCompile {
             //
             try {
                 let userData = JSON.parse(Electron_FS.readFileSync(`${appDir}/um.json`));
-                let username = userData.username;
+                let username = userData.login || userData.username;
                 // "you@domain.com" -> "you":
                 let usernameAtSign = username.indexOf("@");
                 if (usernameAtSign >= 0) username = username.slice(0, usernameAtSign);
