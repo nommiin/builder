@@ -1,3 +1,13 @@
+---
+### ⚠️ heads up! ⚠️
+i haven't been able to find much time to work on this plugin... so it's fallen behind quite a bit. luckily, yellowafterlife made a fork of the plugin that introduces numerous improvements and bug fixes. i'd heavily suggest downloading this fork and using it over this repository.
+
+### [YAL-GMEdit/builder](https://github.com/YAL-GMEdit/builder)
+### [YAL-GMEdit/builder](https://github.com/YAL-GMEdit/builder)
+### [YAL-GMEdit/builder](https://github.com/YAL-GMEdit/builder)
+
+---
+
 # builder
 ![screenshot](https://i.imgur.com/vBhrrvR.png)
 
