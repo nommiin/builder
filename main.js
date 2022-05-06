@@ -1,7 +1,7 @@
 if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
 Builder = {
-    Version: "1.23",
+    Version: "1.24",
     MenuItems: { list: [], run: null, stop: null, fork: null },
     Platform: require("os").type(),
     RuntimeSettings: null,

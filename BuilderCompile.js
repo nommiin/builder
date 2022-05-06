@@ -104,11 +104,24 @@ class BuilderCompile {
         output.write("Using Temporary Directory: " + Temporary);
 
         // Check for GMAssetCompiler and Runner files!
-        if (Electron_FS.existsSync(`${Builder.Runtime}/bin/GMAssetCompiler.exe`) == false) {
-            output.write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
-            Builder.Stop();
-            return;
-        } else if (Electron_FS.existsSync(`${Builder.Runtime}/${isWindows ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
+        let GMAssetCompilerDirOrig = Builder.Runtime + "/bin";
+        let GMAssetCompilerPathOrig = GMAssetCompilerDirOrig + "/GMAssetCompiler.exe";
+        let GMAssetCompilerDir2022 = Builder.Runtime + "/bin/assetcompiler/windows/x64";
+        let GMAssetCompilerPath2022 = GMAssetCompilerDir2022 + "/GMAssetCompiler.exe";
+        let GMAssetCompilerDir = GMAssetCompilerDirOrig;
+        let GMAssetCompilerPath = GMAssetCompilerPathOrig;
+        
+        if (!Electron_FS.existsSync(GMAssetCompilerPath)) {
+            if (Electron_FS.existsSync(GMAssetCompilerPath2022)) {
+                GMAssetCompilerDir = GMAssetCompilerDir2022;
+                GMAssetCompilerPath = GMAssetCompilerPath2022;
+            } else {
+                output.write(`!!! Could not find "GMAssetCompiler.exe" in ${GMAssetCompilerPath}`);
+                Builder.Stop();
+                return;
+            }
+        }
+        if (Electron_FS.existsSync(`${Builder.Runtime}/${isWindows ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
             output.write(`!!! Could not find ${isWindows ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${isWindows ? "windows/" : "mac/"}`);
             Builder.Stop();
             return;
@@ -151,11 +164,14 @@ class BuilderCompile {
 			`${$gmedit["gml.Project"].current.path}`,
 			`/v`,
 			`/bt=run`,
+            `/rtp=${Builder.Runtime}`
 		];
         if (isWindows) {
-            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, compilerArgs);
+            Builder.Compiler = Builder.Command.spawn(GMAssetCompilerPath, compilerArgs, {
+                cwd: Builder.Runtime,
+            });
         } else {
-            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`].concat(compilerArgs));
+            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [GMAssetCompilerPath].concat(compilerArgs));
         }
 
         // Capture compiler output!
