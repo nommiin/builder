@@ -8,7 +8,7 @@ If you found the plugin useful, consider donating to help support development on
 
 # usage
 1. create a folder named "builder" inside of `%appdata%/AceGM/GMEdit/plugins/` on Windows, `/Users/<username>/Library/Application Support/AceGM/GMEdit/plugins` on macOS
-2. extract `main.js`, `build.js`, and `config.json` into aforementioned folder
+2. clone this repo and copy all files into "builder" folder
 3. launch GMEdit and open a project
 4. open the main menu and select "Run Project"
 5. optional: adjust what runtime to use in the "Preferences" menu
