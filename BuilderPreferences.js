@@ -59,6 +59,10 @@ class BuilderPreferences {
 		const Preferences = $gmedit["ui.Preferences"];
 		let root = document.createElement("div");
 		this.element = root;
+		const addSep = (out) => {
+			let hr = document.createElement("hr");
+			out.appendChild(hr);
+		}
 		
 		for (let [key, set] of Object.entries(this.current.runtimeSettings)) {
 			let runtimeGroup = Preferences.addGroup(root, `Runtime Settings (${key})`);
@@ -111,6 +115,7 @@ class BuilderPreferences {
 			Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
 				BuilderDrives.clean();
 			});
+			addSep(settingsGroup);
 		}
 		Preferences.addCheckbox(settingsGroup, 'Show "Run & Fork" in main menu', this.current.showRunAndFork, (value) => {
 			this.current.showRunAndFork = value;
@@ -121,10 +126,12 @@ class BuilderPreferences {
 			this.current.forkArguments = value;
 			this.save();
 		});
-		Preferences.addCheckbox(settingsGroup, "Show Fork Aside", this.current.forkInSideView, (value) => {
+		Preferences.addCheckbox(settingsGroup, 'Show "fork" log in a side view', this.current.forkInSideView, (value) => {
 			this.current.forkInSideView = value;
 			this.save();
 		});
+		addSep(settingsGroup);
+		
 		Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", this.current.reuseTab, (value) => {
 			this.current.reuseTab = value;
 			this.save();
@@ -141,20 +148,14 @@ class BuilderPreferences {
 			this.current.displayLine = value;
 			this.save();
 		});
-		Preferences.addButton(root, "Back", () => {
-			Preferences.setMenu(Preferences.menuMain);
-			this.save();
-		});
 		Preferences.addText(root, `builder v${Builder.Version} by nommiin`);
 	}
 	
 	static ready() {
 		GMEdit.on("preferencesBuilt", (e) => {
-			const Preferences = $gmedit["ui.Preferences"];
-			Preferences.addButton(e.target, "builder Settings", () => {
-				if (this.element == null) this.build();
-				Preferences.setMenu(this.element);
-			});
+			let out = e.target.querySelector('.plugin-settings[for="builder"]');
+			if (this.element == null) this.build();
+			out.appendChild(this.element);
 		});
 	}
 }
