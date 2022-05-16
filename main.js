@@ -8,6 +8,7 @@ Builder = {
     PreferencesElement: document.createElement("div"),
     Preferences: {
         reuseTab: false,
+        openOutputTabOnCompile: true,
         saveCompile: false,
         stopCompile: false,
         displayLine: true,
@@ -226,6 +227,7 @@ Builder = {
             }
             Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
+            Preferences.addCheckbox(settingsGroup, "Open Existing Output Tab on Compile", Builder.Preferences.openOutputTabOnCompile, (value) => { Builder.Preferences.openOutputTabOnCompile = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(settingsGroup, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(settingsGroup, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
             Preferences.addCheckbox(settingsGroup, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
