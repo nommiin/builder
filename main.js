@@ -1,48 +1,43 @@
 if (require("os").type().includes("Darwin")) process.env.ProgramData = "/Users/Shared";
 
 Builder = {
-    Version: "1.23",
+    Version: "1.24",
     MenuItems: { list: [], run: null, stop: null, fork: null },
     Platform: require("os").type(),
-    PreferencesPath: Electron_App.getPath("userData") + "/GMEdit/config/Builder-preferences.json",
-    PreferencesElement: document.createElement("div"),
-    Preferences: {
-        reuseTab: false,
-        saveCompile: false,
-        stopCompile: false,
-        displayLine: true,
-        forkArguments: "",
-        runtimeSettings: {
-            Stable: {
-                location: process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/",
-                runtimeList: [],
-                selection: ""
-            },
-            Beta: {
-                location: process.env.ProgramData + "/GameMakerStudio2-Beta/Cache/runtimes/",
-                runtimeList: [],
-                selection: ""
-            }
-        }
-    },
     RuntimeSettings: null,
-    SavePreferences: function() {
-        Electron_FS.writeFileSync(this.PreferencesPath, JSON.stringify(this.Preferences, (k, v) => {
-            return k == "runtimeList" ? undefined : v;
-        }, "    "));
-    },
-    LoadPreferences: function() {
-        return Object.assign(this.Preferences, JSON.parse(Electron_FS.readFileSync(this.PreferencesPath)));
-    },
     LoadKeywords: function(path) {
-        Electron_FS.readdirSync(path).forEach((e) => {
-            let RuntimeStat = Electron_FS.statSync(path + "/" + e);
-            if (RuntimeStat.isDirectory() == true) {
-                if (Electron_FS.existsSync(path + "/" + e + "/fnames") == true) {
-                    $gmedit["parsers.GmlParseAPI"].loadStd(Electron_FS.readFileSync(path + "/" + e + "/fnames").toString(), {kind: GmlAPI.stdKind, doc: GmlAPI.stdDoc, comp: GmlAPI.stdComp })
+        const custBase = $gmedit["electron.FileWrap"].userPath + "/api/" + GmlAPI.version.getName();
+        const GmlAPILoader = $gmedit["gml.GmlAPILoader"];
+        const GmlParseAPI = $gmedit["parsers.GmlParseAPI"];
+        const getText = (path) => {
+            if (Electron_FS.existsSync(path)) {
+                try {
+                    return Electron_FS.readFileSync(path, "utf8")
+                } catch (x) {
+                    console.error(x);
+                    return null;
                 }
+            } else return null;
+        }
+        for (let platform of Electron_FS.readdirSync(path)) {
+            let platformPath = `${path}/${platform}`;
+            if (!Electron_FS.statSync(platformPath).isDirectory()) continue;
+            let fnamesPath = platformPath + "/fnames";
+            if (!Electron_FS.existsSync(fnamesPath)) continue;
+            let apiText = Electron_FS.readFileSync(fnamesPath, "utf8");
+            //
+            let custDir = custBase + "/" + platform;
+            if (Electron_FS.existsSync(custDir)) {
+                let replText = getText(custDir + "/replace.gml");
+                if (replText) apiText = GmlAPILoader.applyPatchFile(apiText, replText);
+                //
+                let extraText = getText(custDir + "/extra.gml");
+                if (extraText) apiText += "\n" + extraText;
             }
-        });
+            //
+            let args = GmlAPILoader.getArgs();
+            GmlParseAPI.loadStd(apiText, args);
+        }
     },
     ProjectVersion: function(project) {
         // GMEdit seems to adjust the .version property to be a gml_GmlVersion class, check if it's an object or not to maintain backwards compatibility
@@ -94,36 +89,56 @@ Builder = {
             Electron_Dialog.showErrorBox("builder error", `builder v${Builder.Version} is not supported on your platform (${require("os").type()})`);
             return false;
         }
-
+        
         // Load preferences file
-        if (Electron_FS.existsSync(this.PreferencesPath) == true) {
-            try {
-                this.Preferences = this.LoadPreferences();
-                if (this.Preferences.runtimeLocation != null) { // migration
-                    this.Preferences.runtimeSettings.Stable.location = this.Preferences.runtimeLocation;
-                    delete this.Preferences.runtimeLocation;
-                    this.Preferences.runtimeSettings.Stable.selection = this.Preferences.runtimeSelection;
-                    delete this.Preferences.runtimeSelection;
-                    delete this.Preferences.runtimeList;
-                }
-            } catch(e) {
-                console.error("builder - Failed to read or parse preferences file.");
-            }
-        } else {
-            this.SavePreferences();
-        }
-        for (let [key, val] of Object.entries(this.Preferences.runtimeSettings)) {
+        BuilderPreferences.init();
+        for (let [key, val] of Object.entries(BuilderPreferences.current.runtimeSettings)) {
             this.InitalizeRuntimes(val, key == "Stable");
         }
         
-        Builder.LoadKeywords(this.Preferences.runtimeSettings.Stable.location + this.Preferences.runtimeSettings.Stable.selection);
+        let runtimeSettings = BuilderPreferences.current.runtimeSettings.Stable;
+        Builder.LoadKeywords(runtimeSettings.location + runtimeSettings.selection);
         return true;
     }
 };
 
 (function() {
+    function initCommands() {
+        const commands = [{
+            name: "builder-run",
+            title: "builder: Compile and run",
+            bindKey: "F5",
+            exec: () => Builder.Run(),
+        }, {
+            name: "builder-run-and-fork",
+            title: "builder: Compile and run two instances",
+            bindKey: { win: "ctrl-F5", mac: "cmd-F5" },
+            exec: () => Builder.Run(true),
+        }, {
+            name: "builder-stop",
+            title: "builder: Stop compiler or runner process",
+            bindKey: "F6",
+            exec: Builder.Stop,
+        }, {
+            name: "builder-fork",
+            title: "builder: Fork instance of runner",
+            bindKey: "F7",
+            exec: Builder.Fork,
+        }];
+        
+        let hashHandler = $gmedit["ui.KeyboardShortcuts"].hashHandler;
+        let AceCommands = $gmedit["ace.AceCommands"];
+        for (let cmd of commands) {
+            hashHandler.addCommand(cmd);
+            AceCommands.add(cmd);
+            AceCommands.addToPalette({
+                name: cmd.title,
+                exec: cmd.name,
+            })
+        }
+    }
     GMEdit.register("builder", {
-        init: function() {
+        init: function(config) {
             // Initalize Builder!
             if (Builder.Initalize() == false) {
                 console.error("builder - Failed to initalize.");
@@ -143,13 +158,24 @@ Builder = {
                         id: "builder-run",
                         label: "Run",
                         accelerator: "F5",
+						icon: config.dir + "/icons/run.png",
                         enabled: false,
-                        click: Builder.Run
+                        click: () => Builder.Run()
+                    }),
+                    Builder.MenuItems.runAndFork = new Electron_MenuItem({
+                       id: "builder-run-and-fork",
+                       label: "Run and Fork",
+                       accelerator: "Ctrl+F5",
+					   icon: config.dir + "/icons/run-and-fork.png",
+                       enabled: false,
+                       visible: BuilderPreferences.current.showRunAndFork,
+                       click: () => Builder.Run(true)
                     }),
                     Builder.MenuItems.stop = new Electron_MenuItem({
                         id: "builder-stop",
                         label: "Stop",
                         accelerator: "F6",
+						icon: config.dir + "/icons/stop.png",
                         enabled: false,
                         click: Builder.Stop
                     }),
@@ -157,6 +183,7 @@ Builder = {
                         id: "builder-fork",
                         label: "Fork",
                         accelerator: "F7",
+						icon: config.dir + "/icons/fork.png",
                         enabled: false,
                         click: Builder.Fork
                     })
@@ -168,86 +195,19 @@ Builder = {
             }
             if (Builder.MenuItems.run == null) return; // probably running in GMLive.js
 
-            // Create preferences menu!
-            let Preferences = $gmedit["ui.Preferences"];
-            for (let [key, set] of Object.entries(Builder.Preferences.runtimeSettings)) {
-                let runtimeGroup = Preferences.addGroup(Builder.PreferencesElement, `Runtime Settings (${key})`);
-                let element, label;
-                
-                element = Preferences.addInput(runtimeGroup, "Runtime Location", set.location, (value) => {
-                    set.location = value; Builder.SavePreferences();
-                });
-                let runtimeLocationInput = element.querySelector("input");
-                label = element.querySelector("label");
-                label.appendChild(document.createTextNode(" ("));
-                label.appendChild(Preferences.createFuncAnchor("Reset", function() {
-                    switch (key) {
-                        case "Stable": set.location = process.env.ProgramData + "/GameMakerStudio2/Cache/runtimes/"; break;
-                        case "Beta": set.location = process.env.ProgramData + "/GameMakerStudio2-Beta/Cache/runtimes/"; break;
-                        default: return;
-                    }
-                    runtimeLocationInput.value = set.location;
-                    Builder.SavePreferences();
-                }));
-                label.appendChild(document.createTextNode(")"));
-                
-                element = Preferences.addDropdown(runtimeGroup, "Current Runtime", set.selection, set.runtimeList, (value) => {
-                    set.selection = value;
-                    Builder.SavePreferences();
-                });
-                let runtimeListSelect = element.querySelector("select");
-                label = element.querySelector("label");
-                label.appendChild(document.createTextNode(" ("));
-                label.appendChild(Preferences.createFuncAnchor("Rescan", function() {
-                    runtimeListSelect.innerHTML = "";
-                    for (let rt of Builder.GetRuntimes(set.location)) {
-                        let option = document.createElement("option");
-                        option.innerHTML = option.value = rt;
-                        runtimeListSelect.appendChild(option);
-                    }
-                    runtimeListSelect.value = set.selection;
-                    Builder.SavePreferences();
-                }));
-                label.appendChild(document.createTextNode(")"));
-            }
+            BuilderPreferences.ready();
+            BuilderProjectProperties.ready();
             
-            let settingsGroup = Preferences.addGroup(Builder.PreferencesElement, "Builder Settings");
-            if (Builder.Platform =="win") {
-                Preferences.addButton(settingsGroup, "Clean Virtual Drives", () => {
-                    let Command = require("child_process"), Drives = window.localStorage.getItem("builder:drives") || "";
-                    for(let i = 0; i < Drives.length; i++) {
-                        try {
-                            Command.execSync(`subst /d ${Drives[i]}:`);
-                        } catch(e) {};
-                    }
-                    window.localStorage.setItem("builder:drives", "");
-                    Electron_Dialog.showMessageBox({type: "info", title: "Builder", message: "Finished cleaning virtual drives."});
-                });
-            }
-            Preferences.addInput(settingsGroup, "Fork Arguments", Builder.Preferences.forkArguments, (value) => { Builder.Preferences.forkArguments = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Reuse Output Tab", Builder.Preferences.reuseTab, (value) => { Builder.Preferences.reuseTab = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Save Upon Compile", Builder.Preferences.saveCompile, (value) => { Builder.Preferences.saveCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Stop Upon Compile", Builder.Preferences.stopCompile, (value) => { Builder.Preferences.stopCompile = value; Builder.SavePreferences(); });
-            Preferences.addCheckbox(settingsGroup, "Display Line After Fatal Error", Builder.Preferences.displayLine, (value) => { Builder.Preferences.displayLine = value; Builder.SavePreferences(); });
-            Preferences.addButton(Builder.PreferencesElement, "Back", () => { Preferences.setMenu(Preferences.menuMain); Builder.SavePreferences(); });
-            Preferences.addText(Builder.PreferencesElement, `builder v${Builder.Version} by nommiin`);
-
             // Add ace commands!
-            let AceCommands = $gmedit["ace.AceCommands"];
-            AceCommands.add({ name: "run", bindKey: {win: "F5", mac: "F5"}, exec: Builder.Run }, "Run");
-            AceCommands.addToPalette({name: "builder: Compile and run your project", exec: "run", title: "Run"});
-            AceCommands.add({ name: "stop", bindKey: {win: "F6", mac: "F6"}, exec: Builder.Stop }, "Stop");
-            AceCommands.addToPalette({name: "builder: Stop compiler or runner process", exec: "stop", title: "Stop"});
-            AceCommands.add({ name: "fork", bindKey: {win: "F7", mac: "F7"}, exec: Builder.Fork }, "Fork");
-            AceCommands.addToPalette({name: "builder: Fork instance of runner", exec: "fork", title: "Fork"});
+            initCommands();
             
             // Hook into finishedIndexing
             let Project = $gmedit["gml.Project"], finishedIndexing = Project.prototype.finishedIndexing;
-            Project.prototype.finishedIndexing = function(arguments) {
-                let Return = finishedIndexing.apply(this, arguments);
-                if (Builder.ProjectVersion(this) != 2) return Return;
+            function onFinishedIndexing() {
+                if (Builder.ProjectVersion(this) != 2) return;
                 this.configs = ["default"];
-                let projectContent = Electron_FS.readFileSync(Project.current.path, "utf8");
+                let project = Project.current;
+                let projectContent = project.readTextFileSync(project.name);
                 if ($gmedit["yy.YyJson"].isExtJson(projectContent)) { // 2.3
                     function addConfigRec(project, config) {
                         if (!project.configs.includes(config.name)) project.configs.push(config.name);
@@ -261,8 +221,15 @@ Builder = {
                         }
                     }
                 }
-                this.config = (this.configs.includes(window.localStorage.getItem(`config:${Project.current.path}`)) ? window.localStorage.getItem(`config:${Project.current.path}`) : "default");
-                window.localStorage.setItem(`config:${Project.current.path}`, this.config);  
+                
+                let sf = Builder.SessionsFile;
+                if (sf.sync()) sf.data = {};
+                let path = project.path;
+                let pc = sf.data[path];
+                if (pc) pc.mtime = Date.now();
+                this.config = (pc && pc.config) || "default";
+                sf.flush();
+                
                 let TreeView = $gmedit["ui.treeview.TreeView"];
                 let Configurations = undefined;
                 for (let dir of document.querySelectorAll(".dir")) {
@@ -273,39 +240,53 @@ Builder = {
                 }
                 Configurations = Configurations || TreeView.makeAssetDir("Configs", "");
                 
-                this.configs.forEach((e) => {
-                    let Configuration = TreeView.makeItem(e);
+                this.configs.forEach((configName) => {
+                    let Configuration = TreeView.makeItem(configName);
                     Configuration.addEventListener("dblclick", function() {
-                        Project.current.config = this.innerText;
-                        window.localStorage.setItem(`config:${Project.current.path}`, Project.current.config);
-                        document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.innerText})`;
+                        Project.current.config = configName;
+                        //
+                        let sf = Builder.SessionsFile;
+                        if (sf.sync()) sf.data = {};
+                        let path = Project.current.path;
+                        let pc = sf.data[path];
+                        if (pc == null) pc = sf.data[path] = { };
+                        pc.config = configName;
+                        pc.mtime = Date.now();
+                        sf.flush();
+                        //
+                        document.getElementById("project-name").innerText = `${Project.current.displayName} (${configName})`;
                     });
                     Configurations.treeItems.appendChild(Configuration);
                 });
                 TreeView.element.appendChild(Configurations);
                 
                 document.getElementById("project-name").innerText = `${Project.current.displayName} (${this.config})`;
-                return Return;
             }
-            
-            GMEdit.on("preferencesBuilt", (e) => {
-                Preferences.addButton(e.target, "builder Settings", () => {
-                    Preferences.setMenu(Builder.PreferencesElement);
-                });
-            });
+            Project.prototype.finishedIndexing = function(arguments) {
+                let result = finishedIndexing.apply(this, arguments);
+                try {
+                    onFinishedIndexing.call(this);
+                } catch (x) {
+                    console.error(x);
+                }
+                return result;
+            }
             
             function projectOpened() {
                 for (let item of Builder.MenuItems.list) item.enabled = false;
                 let project = $gmedit["gml.Project"].current;
                 if (Builder.ProjectVersion(project) == 2) {
                     Builder.MenuItems.run.enabled = true;
+                    Builder.MenuItems.runAndFork.enabled = true;
                     let runtime;
+                    const pref = BuilderPreferences.current;
                     if (project.version.name == "v23"
-                        && Builder.Preferences.runtimeSettings.Stable.selection < "runtime-2.3"
-                        && Builder.Preferences.runtimeSettings.Beta.selection != ""
+                        && pref.runtimeSettings.Stable.selection < "runtime-2.3"
+                        && pref.runtimeSettings.Beta.selection != ""
                     ) {
-                        runtime = Builder.Preferences.runtimeSettings.Beta;
-                    } else runtime = Builder.Preferences.runtimeSettings.Stable;
+                        // if runtime is set to 2.2.5 but project uses 2.3, prefer a beta runtime
+                        runtime = pref.runtimeSettings.Beta;
+                    } else runtime = pref.runtimeSettings.Stable;
                     Builder.RuntimeSettings = runtime;
                     Builder.LoadKeywords(runtime.location + runtime.selection);
                 }

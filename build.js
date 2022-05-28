@@ -2,138 +2,15 @@ Builder = Object.assign(Builder, {
     Extension: (Builder.Platform.includes("Windows") == true ? "win" : "ios"),
     Command: require("child_process"),
     Compiler: undefined,
-    Output: undefined,
     ErrorMet: false,
     Runner: [],
     Errors: [],
     Outpath: "",
     Runtime: "",
     Drive: "",
-    Run: function() {
-        // Make sure a GMS2 project is open!
-        var project = $gmedit["gml.Project"].current;
-        if (Builder.ProjectVersion(project) != 2) return;
-
-        // Clear any past errors!
-        Builder.Errors = [];
-        Builder.ErrorMet = false;
-
-        // Save all edits if enabled!
-        if (Builder.Preferences.saveCompile == true) {
-            let Changed = document.querySelectorAll(".chrome-tab-changed");
-            for(let i = 0; i < Changed.length; i++) {
-                let File = Changed[i].gmlFile;
-                if (File.__changed == true && File.path != null) {
-                    File.save();
-                }
-            }
-        }
-
-        // Close any runners if open
-        if (Builder.Preferences.stopCompile == true) {
-            if (Builder.Runner.length > 0) {
-                Builder.Runner.forEach((e) => {
-                    e.kill();
-                });
-            }
-            Builder.Runner = [];
-        }
-
-        // Find the temporary directory!
-        let Userpath = "", Temporary = require("os").tmpdir();
-        Builder.Runtime = Builder.RuntimeSettings.location + Builder.RuntimeSettings.selection;
-        if (Builder.Platform == "win") {
-            let User = JSON.parse(Electron_FS.readFileSync(Electron_App.getPath("appData") + "/GameMakerStudio2/um.json"));
-            Userpath = `${Electron_App.getPath("appData")}/GameMakerStudio2/${User.login.slice(0, User.login.indexOf("@")) + "_" + User.userID}`;
-            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${process.env.LOCALAPPDATA}/GameMakerStudio2`) + "/GMS2TEMP";
-        } else {
-            let User = JSON.parse(Electron_FS.readFileSync("/Users/" + process.env.LOGNAME + "/.config/GameMakerStudio2/um.json"));
-            Userpath = `/Users/${process.env.LOGNAME}/.config/GameMakerStudio2/${User.login.slice(0, User.login.indexOf("@")) + "_" + User.userID}`;
-            Temporary = (JSON.parse(Electron_FS.readFileSync(`${Userpath}/local_settings.json`))["machine.General Settings.Paths.IDE.TempFolder"] || `${(Temporary.endsWith("/T") ? Temporary.slice(0, -2) : Temporary)}/GameMakerStudio2`) + "/GMS2TEMP/";
-        }
-        if (Electron_FS.existsSync(Temporary) == false) Electron_FS.mkdirSync(Temporary);
-        
-        let Name = project.name.slice(0, project.name.lastIndexOf("."));
-        Builder.Name = Builder.Sanitize(Name);
-        
-        // Create or reuse output tab!
-        let Time = new Date(), Create = true;
-        if (Builder.Preferences.reuseTab == true) {
-           document.querySelectorAll(".chrome-tab").forEach((e) => {
-                if (e.gmlFile.output != undefined || e.gmlFile.output == true) {
-                    $gmedit["ui.ChromeTabs"].impl.setCurrentTab(e);
-                    e.childNodes.forEach((e) => { if (e.className == "chrome-tab-title") e.innerText = `Output (${Builder.GetTime(Time)})`; })
-                    e.gmlFile.editor.session.setValue("");
-                    Builder.Output = e.gmlFile;
-                    Create = false;
-                }
-            });
-        }
-        if (Create == true) {
-            let GmlFile = $gmedit["gml.file.GmlFile"];
-            Builder.Output = new GmlFile(`Output (${Builder.GetTime(Time)})`, null, $gmedit["file.kind.misc.KPlain"].inst, "");
-            Builder.Output.output = true;
-            Builder.Output.Write = function(e, n=true) {
-                this.editor.session.setValue(this.editor.session.getValue() + (n ? "\n" : "") + e);
-                if (aceEditor.session.gmlFile == this) {
-                    aceEditor.gotoLine(aceEditor.session.getLength());
-                }
-            }
-            GmlFile.openTab(Builder.Output);
-        }
-        Builder.Output.editor.session.setValue(`Compile Started: ${Builder.GetTime(Time)}\nUsing Runtime: ${Builder.Preferences.runtimeSelection}`);
-        Builder.Output.Write("Using Temporary Directory: " + Temporary);
-
-        // Check for GMAssetCompiler and Runner files!
-        if (Electron_FS.existsSync(`${Builder.Runtime}/bin/GMAssetCompiler.exe`) == false) {
-            Builder.Output.Write(`!!! Could not find "GMAssetCompiler.exe" in ${Builder.Runtime}/bin/`);
-            Builder.Stop();
-            return;
-        } else if (Electron_FS.existsSync(`${Builder.Runtime}/${Builder.Platform == "win" ? "windows/Runner.exe" : "mac/YoYo Runner.app"}`) == false) {
-            Builder.Output.Write(`!!! Could not find ${Builder.Platform == "win" ? "Runner.exe" : "YoYo Runner.app"} in ${Runtime}/${Builder.Platform == "win" ? "windows/" : "mac/"}`);
-            Builder.Stop();
-            return;
-        }
-        Builder.MenuItems.stop.enabled = true;
-
-        // Create substitute drive on Windows!
-        if (Builder.Platform == "win") {
-            let Drives = Builder.Command.execSync("wmic logicaldisk get caption").toString().replace("Caption", "").split(":").map(c => c.trim());
-            while (Builder.Drive == "" || Drives.includes(Builder.Drive) == true) {
-                Builder.Drive = String.fromCharCode(65 + Math.round((Math.random() * 25)));
-            }
-            Builder.Command.execSync(`subst ${Builder.Drive}: "${Temporary}"`);
-            Builder.Output.Write("Using Virtual Drive: " + Builder.Drive);
-            window.localStorage["builder:drives"] += Builder.Drive;
-            Temporary = Builder.Drive + ":/";
-        }
-        Builder.Outpath = Temporary + Name + "_" + Builder.Random();
-        Builder.Output.Write("Using Output Path: " + Builder.Outpath);
-
-        // Run the compiler!
-        if (Builder.Platform == "win") {
-            Builder.Compiler = Builder.Command.spawn(`${Builder.Runtime}/bin/GMAssetCompiler.exe`, ["/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, "/m=windows", "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
-        } else {
-            Builder.Compiler = Builder.Command.spawn("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono", [`${Builder.Runtime}/bin/GMAssetCompiler.exe`, "/c", "/zpex", "/j=4", `/gn="${Name}"`, `/td=${Temporary}`, `/zpuf=${Userpath}`, `/m=mac`, "/tgt=64", "/nodnd", `/cfg=${$gmedit["gml.Project"].current.config}`, `/o=${Builder.Outpath}`, `/sh=True`, `/cvm`, `/baseproject=${Builder.Runtime}/BaseProject/BaseProject.yyp`, `${$gmedit["gml.Project"].current.path}`, "/v", "/bt=run"]);
-        }
-
-        // Capture compiler output!
-        Builder.Compiler.stdout.on("data", (e) => {
-            switch (Builder.Parse(e, 0)) {
-                case 1: Builder.Stop();
-                default: Builder.Output.Write(e, false);
-            }
-        });
-
-        Builder.Compiler.on("close", (exitCode) => {
-            // Rename output file!
-            if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
-            Electron_FS.renameSync(`${Builder.Outpath}/game.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
-            Electron_FS.renameSync(`${Builder.Outpath}/game.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
-            Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
-            Builder.MenuItems.fork.enabled = true;
-            Builder.Compiler = undefined;
-        });
+    Drives: [],
+    Run: function(fork) {
+        BuilderCompile.run(fork);
     },
     Stop: function() {
         // Make sure a GMS2 project is open!
@@ -156,15 +33,16 @@ Builder = Object.assign(Builder, {
         if (Builder.ProjectVersion($gmedit["gml.Project"].current) != 2) return;
 
         // Fork runner and add it to process list!
-        Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name));
+        Builder.Runner.push(Builder.Spawn(Builder.Runtime, Builder.Outpath, Builder.Name, true));
     },
     Clean: function() {
         // Clean up anything from compile job!
-        for (let item of Builder.MenuItems.list) item.enabled = item == Builder.MenuItems.run;
-        if (Builder.Drive != "") Builder.RemoveDrive();
-        Builder.Output.Write(`Compile Ended: ${Builder.GetTime(new Date())}`);
+        for (let item of Builder.MenuItems.list) {
+            item.enabled = item.id.includes("-run");
+        }
+        BuilderDrives.removeCurrent();
+        BuilderOutput.main.write(`Compile Ended: ${Builder.GetTime()}`);
         Builder.Runner = [];
-        Builder.Drive = "";
     },
     Parse: function(string, type) {
         // Parse error output!
@@ -183,7 +61,7 @@ Builder = Object.assign(Builder, {
                 }
 
                 case 1: { // Runner.exe
-                    if (Builder.Preferences.displayLine == true && (Message.startsWith("ERROR!!! :: ") == true && Contents[i + 1].startsWith("FATAL ERROR") == true)) {
+                    if (BuilderPreferences.current.displayLine == true && (Message.startsWith("ERROR!!! :: ") == true && Contents[i + 1].startsWith("FATAL ERROR") == true)) {
                         for(let j = i + 1; j < Contents.length; j++) {
                             if (Contents[j].startsWith("stack frame is") == true) {
                                 let Stack = Builder.ParseDescriptor(Contents[++j]);
@@ -227,7 +105,7 @@ Builder = Object.assign(Builder, {
         return Descriptor;
     },
     GetEvent: function(event) {
-        // Turn descriptor event into GMEdit event name! 
+        // Turn descriptor event into GMEdit event name!
         let SubEvent = event.slice(event.lastIndexOf("_") + 1), GmlEvent = $gmedit["parsers.GmlEvent"];
         event = event.slice(0, event.lastIndexOf("_"));
         for(let i = 0; i < GmlEvent.t2sc.length; i++) {
@@ -241,7 +119,7 @@ Builder = Object.assign(Builder, {
         // Display errors in new tab!
         let project = $gmedit["gml.Project"].current;
         let GmlFile = $gmedit["gml.file.GmlFile"];
-        let output = new GmlFile(`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`); 
+        let output = new GmlFile(`Compilation Errors`, null, $gmedit["file.kind.gml.KGmlSearchResults"].inst, `// Compile failed with ${Builder.Errors.length} error${(Builder.Errors.length == 1 ? "" : "s")}\n\n`);
         output.Write = (e) => {output.editor.session.setValue(output.editor.session.getValue() + "\n" + e); }
         for (let error of Builder.Errors) {
             let colonPos = error.indexOf(":");
@@ -272,32 +150,53 @@ Builder = Object.assign(Builder, {
         }
         GmlFile.openTab(output);
     },
-    Spawn: function(runtime, output, name) {
+    Spawn: function(runtime, outputPath, name, isFork) {
         // Spawn an instance of the runner!
-        let RunnerPath = (Builder.Platform == "win"
+        let runnerPath = (Builder.Platform == "win"
             ? `${runtime}/windows/Runner.exe`
             : `${runtime}/mac/YoYo Runner.app/Contents/MacOS/Mac_Runner`
         );
-        let Runner = Builder.Command.spawn(RunnerPath, ["-game", `${output}/${name}.${Builder.Extension}`].concat(Builder.Preferences.forkArguments.split(" ")));
-        Runner.stdout.on("data", (e) => {
-            switch (Builder.Parse(e, 1)) {
-                default: Builder.Output.Write(e, false);
+        let builderSettings = $gmedit["gml.Project"].current.properties.builderSettings;
+
+        let args = [
+            "-game", `${outputPath}/${name}.${Builder.Extension}`
+        ];
+        if (builderSettings?.steamAppID != null) {
+            if (builderSettings?.steamAppID != 0) args.push("-debug_steamapi");
+        } else if (Electron_FS.existsSync(`${outputPath}/steam_appid.txt`)) {
+            args.push("-debug_steamapi");
+        }
+        if (isFork) {
+            let forkArguments = builderSettings?.forkArguments ?? BuilderPreferences.current.forkArguments;
+            args = args.concat(forkArguments.split(" "));
+        }
+
+        let output = BuilderOutput.open(isFork);
+        output.write(`Running ${[runnerPath].concat(args).join(" ")}...\n`);
+        let runner = Builder.Command.spawn(runnerPath, args, {
+            cwd: outputPath
+        });
+        runner.stdout.on("data", (e) => {
+            let text = e.toString();
+            switch (Builder.Parse(text, 1)) {
+                default: output.write(text, false);
             }
         });
-        Runner.addListener("close", function(code) {
-            Builder.Runner.forEach((e, i) => {
-                if (this == e) {
-                    Builder.Runner[i] = undefined;
-                }
-            });
-            Builder.Runner = Builder.Runner.filter(e => e != undefined);
-            if (code != 0) Builder.Output.Write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
-            if (Builder.Runner.length == 0) Builder.Clean();
+        runner.addListener("close", function(code) {
+            let runners = Builder.Runner;
+            let i = runners.indexOf(this);
+            if (i >= 0) runners.splice(i, 1);
+
+            if (code != 0 && code != null) output.write(`Runner exited with non-zero status (0x${code.toString(16)} = ${code})`)
+            if (runners.length == 0) Builder.Clean();
         });
-        return Runner;
+        return runner;
     },
     Sanitize: (value) => { return value.replace(/ /g, "_"); },
     Random: () => { return Math.round(Math.random() * 4294967295).toString(16).padStart(8, "0").toUpperCase(); },
-    GetTime: (t) => { return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}` },
-    RemoveDrive: () => { Builder.Output.Write(`Removing Virtual Drive: ${Builder.Drive}`); Builder.Command.execSync(`subst /d ${Builder.Drive}:`); window.localStorage["builder:drives"] = window.localStorage["builder:drives"].slice(0, window.localStorage["builder:drives"].indexOf(Builder.Drive)) + window.localStorage["builder:drives"].slice(window.localStorage["builder:drives"].indexOf(Builder.Drive) + 1); }
+    GetTime: (t) => {
+        if (t == null) t = new Date();
+        return `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`
+    },
+    SessionsFile: new $gmedit["electron.ConfigFile"]("session", "builder-projects"),
 });

@@ -1,4 +1,13 @@
 {
     "name": "builder",
-    "scripts": ["main.js", "build.js"]
+    "scripts": [
+        "main.js",
+        "build.js",
+        "BuilderPreferences.js",
+        "BuilderProjectProperties.js",
+        "BuilderCompile.js",
+        "BuilderDrives.js",
+        "BuilderOutput.js",
+        "BuilderOutputAside.js"
+    ]
 }
