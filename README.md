@@ -1,9 +1,6 @@
 # builder
 ![screenshot](https://i.imgur.com/vBhrrvR.png)
 
-# ***warning***
-With the [recent changes to the licensing system](https://www.yoyogames.com/en/blog/more-platforms-for-less), access to CLI building will be restricted to the **Enterprise** tier of the GMS 2 license and will cause builder to be non-functional for licenses below the tier. Please make note of this when using builder. Once this change is put into place, I'll implement a handler for this new change.
-
 # about
 builder was made to make [GMEdit](https://yellowafterlife.itch.io/gmedit) usable without the need of having GameMaker Studio 2 open in the background to compile projects. builder works by using your pre-existing settings made by GMS 2 to pass arguments into GMAssetCompiler and compile your project. builder was developed with faster development in mind, skipping most file generation and secondary applications being required to compile. builder even supports switching the runtime that you build your project with as well as compiling the project as it's already running! You can download a pre-packaged version of builder from [here!](https://github.com/nommiin/builder/releases)
 
