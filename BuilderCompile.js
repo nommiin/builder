@@ -91,7 +91,7 @@ class BuilderCompile {
             }
             // for an off-chance that your %LOCALAPPDATA%/GameMakerStudio2 directory doesn't exist
             if (!Electron_FS.existsSync(Temporary)) Electron_FS.mkdirSync(Temporary);
-            Temporary += "/GMS2TEMP";
+            Temporary += `${isWindows ? "" : "/GameMakerStudio2"}/GMS2TEMP`;
             if (!Electron_FS.existsSync(Temporary)) Electron_FS.mkdirSync(Temporary);
         }
         
@@ -194,9 +194,10 @@ class BuilderCompile {
             if (exitCode != 0 || Builder.Compiler == undefined || Builder.ErrorMet == true) { Builder.Clean(); return; }
             
             // Rename output file!
-            if (Name != Builder.Name) {
-                Electron_FS.renameSync(`${Builder.Outpath}/${Name}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
-                Electron_FS.renameSync(`${Builder.Outpath}/${Name}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
+            if (Name != Builder.Name || !isWindows) {
+                let executableName = isWindows ? Name : "game";
+                Electron_FS.renameSync(`${Builder.Outpath}/${executableName}.${Builder.Extension}`, `${Builder.Outpath}/${Builder.Name}.${Builder.Extension}`);
+                Electron_FS.renameSync(`${Builder.Outpath}/${executableName}.yydebug`, `${Builder.Outpath}/${Builder.Name}.yydebug`);
             }
             
             // Copy Steam API binary if needed:
